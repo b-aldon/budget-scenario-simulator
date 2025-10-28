@@ -6,51 +6,50 @@ st.set_page_config(page_title="GRESB Budget Simulator", layout="wide")
 st.title("💰 GRESB Annual Budget Scenario Simulator")
 
 # ====================================================
-# WORKSTREAM STRUCTURE
+# UPDATED WORKSTREAM STRUCTURE (unique names)
 # ====================================================
 
 workstream_structure = {
     "Jan - March": [
-        "Validation Guidance Docs",
-        "OAD",
-        "Edge cases files",
-        "LLM output Refinement"
+        "1. Validation Guidance Docs",
+        "2. OAD",
+        "3. Edge cases files",
+        "4. LLM output Refinement"
     ],
     "Apr - June": [
-        "PSC admin",
-        "PSC validation (Primary and QC)",
-        "PSC notes prep for GRESB",
-        "PSC call leads",
-        "Report generation",
-        "Queries on Front"
+        "5. PSC admin",
+        "6. PSC validation (Primary and QC)",
+        "7. PSC notes prep for GRESB calls",
+        "8. PSC call leads",
+        "9. Report generation",
+        "10. Queries on Front"
     ],
     "July - August": [
-        "Validation Admin",
-        "Primary Decisions",
-        "Secondary decisions",
-        "QC 10% of accepted Primaries",
-        "Same Doc ID - CC",
-        "YoY - CC",
-        "Sensitive managers - CC",
-        "Extra QC on LLM decisions",
-        "Escalations Set-up"
+        "11. Validation Admin",
+        "12. Primary Decisions",
+        "13. Secondary decisions",
+        "14. QC 10% of accepted",
+        "15. Same Doc ID - CC",
+        "16. YoY - CC",
+        "17. Sensitive managers - CC",
+        "18. Extra QC on LLM decisions",
+        "19. Escalations Set-up"
     ],
     "September": [
-        "All validation queries on Front",
-        "Re-Validate from AC - Primary",
-        "Re-Validate from AC - Secondary",
-        "Deem YoY mistake",
-        "Deem validation error",
-        "Update and maintain trackers",
-        "Revert Validation error decisions",
-        "Same Doc ID - CC",
-        "YoY - CC",
-        "Sensitive managers - CC"
+        "20. All validation queries on Front",
+        "21. Re-Validate from AC - Primary",
+        "22. Re-Validate from AC - Secondary",
+        "23. Deem YoY mistake",
+        "24. Deem validation error",
+        "25. Update and maintain trackers",
+        "26. Revert Validation error decisions",
+        "27. Same Docs - CC",
+        "28. Manager level - CC"
     ],
     "October - December": [
-        "LLM Output refinement",
-        "Compile cases for Outreach",
-        "Post Vali tasks"
+        "29. LLM Output refinement",
+        "30. Compile Outreach cases",
+        "31. Post-Validation tasks"
     ]
 }
 
@@ -68,7 +67,12 @@ with st.sidebar.expander("🧩 1. Workstreams & Hours", expanded=False):
         with st.expander(period, expanded=False):
             for task in tasks:
                 workstream_hours[task] = st.number_input(
-                    f"{task} (hrs)", min_value=0, max_value=2000, value=100, step=10, key=f"hrs_{task}"
+                    f"{task} (hrs)",
+                    min_value=0,
+                    max_value=2000,
+                    value=100,
+                    step=10,
+                    key=f"hrs_{task.replace(' ', '_')}"
                 )
 
 # ====================================================
@@ -82,9 +86,9 @@ with st.sidebar.expander("👥 2. Team Allocation per Workstream", expanded=Fals
     for period, tasks in workstream_structure.items():
         with st.expander(period, expanded=False):
             for task in tasks:
-                gresb = st.slider(f"GRESB share for {task}", 0, 100, 20, key=f"gresb_{task}")
-                sas = st.slider(f"SAS share for {task}", 0, 100 - gresb, 50, key=f"sas_{task}")
-                esgds = st.slider(f"ESGDS share for {task}", 0, 100 - gresb - sas, 30, key=f"esgds_{task}")
+                gresb = st.slider(f"GRESB share for {task}", 0, 100, 20, key=f"gresb_{task.replace(' ', '_')}")
+                sas = st.slider(f"SAS share for {task}", 0, 100 - gresb, 50, key=f"sas_{task.replace(' ', '_')}")
+                esgds = st.slider(f"ESGDS share for {task}", 0, 100 - gresb - sas, 30, key=f"esgds_{task.replace(' ', '_')}")
 
                 total = gresb + sas + esgds
                 if total != 100:
@@ -109,6 +113,7 @@ with st.sidebar.expander("SAS (Manual Team)", expanded=False):
     new_weight = st.slider("New Reviewer %", 0, 100, 40)
     exp_weight = st.slider("Experienced Reviewer %", 0, 100 - new_weight, 40)
     consult_weight = 100 - new_weight - exp_weight
+
     sas_blended_rate = (
         (new_weight / 100) * sas_rate_new +
         (exp_weight / 100) * sas_rate_exp +
@@ -166,3 +171,4 @@ summary_total = summary.sum()
 st.metric("Total Annual Cost", f"${summary_total['Total Cost']:,.0f}")
 
 st.bar_chart(summary[["GRESB Cost", "SAS Cost", "ESGDS Cost"]])
+

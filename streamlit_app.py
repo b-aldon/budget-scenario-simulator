@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="GRESB Budget Simulator", layout="wide")
+st.set_page_config(page_title="GRESB Budget Scenario Simulator", layout="wide")
 
 st.title("💰 GRESB Annual Budget Scenario Simulator")
 
@@ -54,52 +54,75 @@ workstream_structure = {
 }
 
 # ====================================================
-# SIDEBAR: WORKSTREAMS (expandable)
+# SIDEBAR: COMBINED INPUTS
 # ====================================================
 
 st.sidebar.header("⚙️ Configure Model Inputs")
 
-with st.sidebar.expander("🧩 1. Workstreams & Hours", expanded=False):
-    st.caption("Define the time allocation (in hours) for each task.")
-    workstream_hours = {}
+with st.sidebar.expander("🧩 Workstreams, Hours & Team Allocation", expanded=False):
+    st.caption("Define hours and team workload distribution per workstream.")
+    workstream_inputs = {}
 
     for period, tasks in workstream_structure.items():
         with st.expander(period, expanded=False):
             for task in tasks:
-                workstream_hours[task] = st.number_input(
-                    f"{task} (hrs)",
-                    min_value=0,
-                    max_value=2000,
-                    value=100,
-                    step=10,
-                    key=f"hrs_{task.replace(' ', '_')}"
-                )
-
-# ====================================================
-# SIDEBAR: TEAM ALLOCATION (expandable)
-# ====================================================
-
-with st.sidebar.expander("👥 2. Team Allocation per Workstream", expanded=False):
-    st.caption("Assign workload shares (in %) to GRESB, SAS, and ESGDS for each sub-task. Total must equal 100%.")
-    workload_split = {}
-
-    for period, tasks in workstream_structure.items():
-        with st.expander(period, expanded=False):
-            for task in tasks:
-                gresb = st.slider(f"GRESB share for {task}", 0, 100, 20, key=f"gresb_{task.replace(' ', '_')}")
-                sas = st.slider(f"SAS share for {task}", 0, 100 - gresb, 50, key=f"sas_{task.replace(' ', '_')}")
-                esgds = st.slider(f"ESGDS share for {task}", 0, 100 - gresb - sas, 30, key=f"esgds_{task.replace(' ', '_')}")
+                st.markdown(f"**{task}**")
+                cols = st.columns([2, 1, 1, 1, 0.5])
+                
+                with cols[0]:
+                    hours = st.number_input(
+                        f"Hours for {task}",
+                        min_value=0,
+                        max_value=2000,
+                        value=100,
+                        step=10,
+                        key=f"hrs_{task.replace(' ', '_')}"
+                    )
+                with cols[1]:
+                    gresb = st.number_input(
+                        "GRESB %",
+                        min_value=0,
+                        max_value=100,
+                        value=20,
+                        step=5,
+                        key=f"gresb_{task.replace(' ', '_')}"
+                    )
+                with cols[2]:
+                    sas = st.number_input(
+                        "SAS %",
+                        min_value=0,
+                        max_value=100,
+                        value=50,
+                        step=5,
+                        key=f"sas_{task.replace(' ', '_')}"
+                    )
+                with cols[3]:
+                    esgds = st.number_input(
+                        "ESGDS %",
+                        min_value=0,
+                        max_value=100,
+                        value=30,
+                        step=5,
+                        key=f"esgds_{task.replace(' ', '_')}"
+                    )
 
                 total = gresb + sas + esgds
-                if total != 100:
-                    st.warning(f"⚠️ Total = {total}% for {task}. Adjust to make 100%.")
-                workload_split[task] = {"GRESB": gresb, "SAS": sas, "ESGDS": esgds}
+                if total > 100:
+                    st.error(f"⚠️ Total {total}% exceeds 100% for {task}. Reduce one of the shares.")
+
+                workstream_inputs[task] = {
+                    "Category": period,
+                    "Hours": hours,
+                    "GRESB": gresb,
+                    "SAS": sas,
+                    "ESGDS": esgds
+                }
 
 # ====================================================
 # SIDEBAR: COST DETAILS (Grouped)
 # ====================================================
 
-st.sidebar.subheader("💵 3. Cost Details")
+st.sidebar.subheader("💵 Cost Details")
 
 with st.sidebar.expander("GRESB (Internal Team)", expanded=False):
     gresb_monthly_cost = st.number_input("Monthly salary total ($)", 0, 100000, 15000)
@@ -129,31 +152,33 @@ with st.sidebar.expander("ESGDS (AI Team)", expanded=False):
 # ====================================================
 
 results = []
-total_hours = sum(workstream_hours.values()) if workstream_hours else 1
+total_hours = sum([v["Hours"] for v in workstream_inputs.values()]) or 1
 
-for period, tasks in workstream_structure.items():
-    for task in tasks:
-        hours = workstream_hours[task]
-        split = workload_split[task]
+for task, details in workstream_inputs.items():
+    hours = details["Hours"]
+    gresb_share = details["GRESB"]
+    sas_share = details["SAS"]
+    esgds_share = details["ESGDS"]
 
-        gresb_cost = gresb_monthly_cost * 12 * (split["GRESB"] / 100) * (hours / total_hours)
-        sas_cost = hours * (split["SAS"] / 100) * sas_blended_rate
-        esgds_cost = esgds_annual_cost * (split["ESGDS"] / 100) * (hours / total_hours)
+    # Cost calculations
+    gresb_cost = gresb_monthly_cost * 12 * (gresb_share / 100) * (hours / total_hours)
+    sas_cost = hours * (sas_share / 100) * sas_blended_rate
+    esgds_cost = esgds_annual_cost * (esgds_share / 100) * (hours / total_hours)
 
-        total_cost = gresb_cost + sas_cost + esgds_cost
+    total_cost = gresb_cost + sas_cost + esgds_cost
 
-        results.append({
-            "Category": period,
-            "Task": task,
-            "Hours": hours,
-            "GRESB %": split["GRESB"],
-            "SAS %": split["SAS"],
-            "ESGDS %": split["ESGDS"],
-            "GRESB Cost": gresb_cost,
-            "SAS Cost": sas_cost,
-            "ESGDS Cost": esgds_cost,
-            "Total Cost": total_cost
-        })
+    results.append({
+        "Category": details["Category"],
+        "Task": task,
+        "Hours": hours,
+        "GRESB %": gresb_share,
+        "SAS %": sas_share,
+        "ESGDS %": esgds_share,
+        "GRESB Cost": gresb_cost,
+        "SAS Cost": sas_cost,
+        "ESGDS Cost": esgds_cost,
+        "Total Cost": total_cost
+    })
 
 df = pd.DataFrame(results)
 

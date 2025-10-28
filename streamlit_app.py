@@ -127,5 +127,42 @@ results = []
 total_hours = sum(workstream_hours.values()) if workstream_hours else 1
 
 for period, tasks in workstream_structure.items():
-    for task i
+    for task in tasks:
+        hours = workstream_hours[task]
+        split = workload_split[task]
 
+        gresb_cost = gresb_monthly_cost * 12 * (split["GRESB"] / 100) * (hours / total_hours)
+        sas_cost = hours * (split["SAS"] / 100) * sas_blended_rate
+        esgds_cost = esgds_annual_cost * (split["ESGDS"] / 100) * (hours / total_hours)
+
+        total_cost = gresb_cost + sas_cost + esgds_cost
+
+        results.append({
+            "Category": period,
+            "Task": task,
+            "Hours": hours,
+            "GRESB %": split["GRESB"],
+            "SAS %": split["SAS"],
+            "ESGDS %": split["ESGDS"],
+            "GRESB Cost": gresb_cost,
+            "SAS Cost": sas_cost,
+            "ESGDS Cost": esgds_cost,
+            "Total Cost": total_cost
+        })
+
+df = pd.DataFrame(results)
+
+# ====================================================
+# DISPLAY RESULTS
+# ====================================================
+
+st.header("📊 Results Overview")
+st.dataframe(df.style.format("{:,.0f}", subset=["GRESB Cost", "SAS Cost", "ESGDS Cost", "Total Cost"]))
+
+st.markdown("---")
+summary = df.groupby("Category")[["GRESB Cost", "SAS Cost", "ESGDS Cost", "Total Cost"]].sum()
+summary_total = summary.sum()
+
+st.metric("Total Annual Cost", f"${summary_total['Total Cost']:,.0f}")
+
+st.bar_chart(summary[["GRESB Cost", "SAS Cost", "ESGDS Cost"]])

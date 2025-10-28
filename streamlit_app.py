@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-st.title("💰 Team Budget Scenario Simulator")
+st.title("Validation Budget Scenario Simulator")
 
 # --- Input Section ---
 st.sidebar.header("Adjust Inputs")
@@ -10,8 +10,8 @@ st.sidebar.header("Adjust Inputs")
 total_hours = st.sidebar.number_input("Total Workload Hours", 0, 10000, 5000)
 
 # Team split sliders
-team1_share = st.sidebar.slider("External Team 1 (%)", 0, 100, 40)
-team2_share = st.sidebar.slider("External Team 2 (AI) (%)", 0, 100 - team1_share, 40)
+team1_share = st.sidebar.slider("SAS (%)", 0, 100, 40)
+team2_share = st.sidebar.slider("ESGDS (%)", 0, 100 - team1_share, 40)
 inhouse_share = 100 - team1_share - team2_share
 
 # Cost rates
@@ -30,14 +30,14 @@ total_cost = team1_cost + team2_cost + inhouse_cost
 # --- Results ---
 st.subheader("Scenario Results")
 st.metric("Total Annual Cost", f"${total_cost:,.0f}")
-st.write(f"In-house share: {inhouse_share}%")
-st.write(f"Team 1 (manual) cost: ${team1_cost:,.0f}")
-st.write(f"Team 2 (AI) cost: ${team2_cost:,.0f}")
-st.write(f"In-house cost: ${inhouse_cost:,.0f}")
+st.write(f"GRESB share: {inhouse_share}%")
+st.write(f"SAS (manual) cost: ${team1_cost:,.0f}")
+st.write(f"ESGDS (AI) cost: ${team2_cost:,.0f}")
+st.write(f"GRESB cost: ${inhouse_cost:,.0f}")
 
 # --- Chart ---
 data = {
-    'Team': ['In-house', 'External Team 1', 'External Team 2'],
+    'Team': ['GRESB', 'SAS', 'ESGDS'],
     'Cost': [inhouse_cost, team1_cost, team2_cost]
 }
 df = pd.DataFrame(data)

@@ -273,19 +273,72 @@ else:
 
     st.altair_chart(stacked_bar, use_container_width=True)
 
-# --- Aggregated Summary Section ---
-st.markdown("## 🧾 Aggregated Cost Summary")
+# --- Validation Summary Section ---
+st.markdown("## 🧾 Validation Summary")
 
-total_gresb = actor_totals["GRESB"]
-total_sas = actor_totals["SAS New"] + actor_totals["SAS Exp"] + actor_totals["SAS Consl"]
-total_esgds = actor_totals["ESGDS"]
+if df.empty:
+    st.info("No data available yet — please input hours and allocations in the sidebar.")
+else:
+    # --- Core summary metrics ---
+    num_workstreams = df["Workstream"].nunique()
+    total_hours = df["Hours"].sum()
+    total_cost = df["Total"].sum()
 
-st.write(f"**GRESB Total:** ${total_gresb:,.2f}")
-st.write(f"**SAS Total:** ${total_sas:,.2f}")
-st.write(f"  • SAS New: ${actor_totals['SAS New']:,.2f}")
-st.write(f"  • SAS Exp: ${actor_totals['SAS Exp']:,.2f}")
-st.write(f"  • SAS Consl: ${actor_totals['SAS Consl']:,.2f}")
-st.write(f"**ESGDS Total:** ${total_esgds:,.2f}")
-st.write(f"### 💵 **Grand Total:** ${df['Total'].sum():,.2f}")
+    total_gresb = df["GRESB"].sum()
+    total_sas_new = df["SAS New"].sum()
+    total_sas_exp = df["SAS Exp"].sum()
+    total_sas_consl = df["SAS Consl"].sum()
+    total_esgds = df["ESGDS"].sum()
 
+    total_sas = total_sas_new + total_sas_exp + total_sas_consl
+
+    # --- Summary Cards Layout ---
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("🧩 Number of Workstreams", f"{num_workstreams}")
+    with col2:
+        st.metric("⏱️ Total Hours", f"{total_hours:,.0f}")
+    with col3:
+        st.metric("💵 Total Cost", f"${total_cost:,.2f}")
+
+    st.markdown("---")
+    st.markdown("### 💼 Cost Split by Team")
+
+    colA, colB, colC = st.columns(3)
+    with colA:
+        st.markdown(f"**GRESB:** ${total_gresb:,.2f}")
+    with colB:
+        st.markdown(
+            f"**SAS:** ${total_sas:,.2f}  \n"
+            f" • SAS New: ${total_sas_new:,.2f}  \n"
+            f" • SAS Exp: ${total_sas_exp:,.2f}  \n"
+            f" • SAS Consl: ${total_sas_consl:,.2f}"
+        )
+    with colC:
+        st.markdown(f"**ESGDS:** ${total_esgds:,.2f}")
+
+    st.markdown("---")
+
+    # --- Enhancement: highlight ratios and insights ---
+    avg_cost_per_hour = total_cost / total_hours if total_hours > 0 else 0
+    highest_cost_actor = max(
+        {
+            "GRESB": total_gresb,
+            "SAS": total_sas,
+            "ESGDS": total_esgds,
+        },
+        key=lambda x: {
+            "GRESB": total_gresb,
+            "SAS": total_sas,
+            "ESGDS": total_esgds,
+        }[x],
+    )
+
+    st.markdown("### 📊 Key Insights")
+    st.info(
+        f"💡 **Average Cost per Hour:** ${avg_cost_per_hour:,.2f}  \n"
+        f"🏆 **Highest Contributor:** {highest_cost_actor}"
+    )
+
+    st.success("✅ Validation cost simulation completed successfully!")
 

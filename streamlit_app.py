@@ -114,8 +114,7 @@ if not df.empty:
     df["Estimated Cost ($)"] = df.apply(calc_cost, axis=1)
 
 # --- Main Output Section ---
-import pandas as pd
-st.markdown("## 💰 Cost per Workstream")
+st.markdown("## 💰 Validation Budget Simulator")
 
 results = []
 for period, tasks in workstreams.items():
@@ -161,18 +160,18 @@ for period, tasks in workstreams.items():
 
 # --- Convert to DataFrame ---
 df = pd.DataFrame(results)
-df.index = df.index + 1  # start numbering at 1
+df.index = df.index + 1  # Start numbering at 1
 
-# Group data by period
-for period in output_df["Period"].unique():
+# --- Collapsible Workstream Cards by Period ---
+for period in df["Period"].unique():
     with st.expander(f"📅 {period}", expanded=True):
-        period_df = output_df[output_df["Period"] == period].copy()
+        period_df = df[df["Period"] == period].copy()
 
-        # Optional: round off numeric columns for display
+        # Round numeric columns for readability
         numeric_cols = period_df.select_dtypes(include=["float", "int"]).columns
         period_df[numeric_cols] = period_df[numeric_cols].round(2)
 
-        # Display the dataframe without the index
+        # Display tidy dataframe
         st.dataframe(
             period_df[
                 [
@@ -189,11 +188,11 @@ for period in output_df["Period"].unique():
             use_container_width=True
         )
 
-        # Add a mini summary below each expander
+        # Subtotal summary per period
         total_cost = period_df["Total"].sum()
         total_hours = period_df["Hours"].sum()
         st.markdown(
-            f"**Subtotal:** 💰 ${total_cost:,.0f} 🕒 {total_hours:,.0f} hours"
+            f"**Subtotal for {period}:** 💰 ${total_cost:,.0f} 🕒 {total_hours:,.0f} hours"
         )
 
 st.divider()
@@ -217,7 +216,7 @@ chart_df = pd.DataFrame({
 chart_df.set_index("Actor", inplace=True)
 st.bar_chart(chart_df)
 
-# --- Summary Section ---
+# --- Aggregated Summary Section ---
 st.markdown("## 🧾 Aggregated Cost Summary")
 
 total_gresb = actor_totals["GRESB"]
@@ -231,4 +230,5 @@ st.write(f"  • SAS Exp: ${actor_totals['SAS Exp']:,.2f}")
 st.write(f"  • SAS Consl: ${actor_totals['SAS Consl']:,.2f}")
 st.write(f"**ESGDS Total:** ${total_esgds:,.2f}")
 st.write(f"### 💵 **Grand Total:** ${df['Total'].sum():,.2f}")
+
 

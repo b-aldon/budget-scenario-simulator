@@ -114,18 +114,92 @@ if not df.empty:
     df["Estimated Cost ($)"] = df.apply(calc_cost, axis=1)
 
 # --- Main Output Section ---
-st.subheader("📊 Validation Budget Simulator")
+st.subheader("Cost per Workstream")
 
-if not df.empty:
-    # Clean up table grouping
-    df_display = df.copy()
-    df_display.loc[df_display["Period"].duplicated(), "Period"] = ""
-    st.dataframe(df_display.style.format({"Estimated Cost ($)": "${:,.2f}"}), use_container_width=True)
+# --- Main Output Section ---
+import pandas as pd
+import plotly.express as px
 
-    total_budget = df["Estimated Cost ($)"].sum()
-    st.markdown(f"### 💵 Total Estimated Budget: **${total_budget:,.2f}**")
+st.markdown("## 💼 Validation Budget Simulator")
 
-else:
-    st.info("Please enter workstream hours and allocation details on the sidebar to view results.")
+# --- Calculate Costs ---
+results = []
+for period, tasks in workstreams.items():
+    for task in tasks:
+        hours = st.session_state.get(f"hours_{task}", 0)
+        workload = st.session_state.get(f"workload_{task}", {})
+        cost_breakdown = {}
+        
+        # GRESB
+        gresb_share = workload.get("GRESB", 0)
+        gresb_cost = (hours * gresb_share / 100) * (gresb_monthly / 160)  # approx 160 hrs/month
+        
+        # SAS sub-teams
+        sas_new_share = workload.get("SAS New", 0)
+        sas_new_cost = (hours * sas_new_share / 100) * sas_new_rate
+        
+        sas_exp_share = workload.get("SAS Exp", 0)
+        sas_exp_cost = (hours * sas_exp_share / 100) * sas_exp_rate
+        
+        sas_consl_share = workload.get("SAS Consl", 0)
+        sas_consl_cost = (hours * sas_consl_share / 100) * sas_consl_rate
+        
+        # ESGDS
+        esgds_share = workload.get("ESGDS", 0)
+        esgds_cost = (hours * esgds_share / 100) * (esgds_annual / 2000)  # assume 2000 annual work hours
+        
+        total_cost = gresb_cost + sas_new_cost + sas_exp_cost + sas_consl_cost + esgds_cost
+        
+        results.append({
+            "Period": period,
+            "Workstream": task,
+            "Hours": hours,
+            "GRESB": gresb_cost,
+            "SAS New": sas_new_cost,
+            "SAS Exp": sas_exp_cost,
+            "SAS Consl": sas_consl_cost,
+            "ESGDS": esgds_cost,
+            "Total": total_cost
+        })
+
+# --- Convert to DataFrame ---
+df = pd.DataFrame(results)
+df.index = df.index + 1  # start numbering at 1
+
+# --- Display Table ---
+st.dataframe(df, use_container_width=True)
+
+# --- Bar Chart Visualization ---
+st.markdown("### 📊 Cost Distribution by Actor")
+actor_totals = {
+    "GRESB": df["GRESB"].sum(),
+    "SAS New": df["SAS New"].sum(),
+    "SAS Exp": df["SAS Exp"].sum(),
+    "SAS Consl": df["SAS Consl"].sum(),
+    "ESGDS": df["ESGDS"].sum()
+}
+
+chart_df = pd.DataFrame(list(actor_totals.items()), columns=["Actor", "Total Cost"])
+fig = px.bar(chart_df, x="Actor", y="Total Cost", text_auto=".2s", color="Actor",
+             title="Cost Breakdown by Actor")
+st.plotly_chart(fig, use_container_width=True)
+
+# --- Summary Section ---
+st.markdown("### 💰 Aggregated Cost Summary")
+
+total_gresb = actor_totals["GRESB"]
+total_sas = actor_totals["SAS New"] + actor_totals["SAS Exp"] + actor_totals["SAS Consl"]
+total_esgds = actor_totals["ESGDS"]
+
+st.write(f"**GRESB Total:** ${total_gresb:,.2f}")
+st.write(f"**SAS Total:** ${total_sas:,.2f}")
+st.write(f"  • SAS New: ${actor_totals['SAS New']:,.2f}")
+st.write(f"  • SAS Exp: ${actor_totals['SAS Exp']:,.2f}")
+st.write(f"  • SAS Consl: ${actor_totals['SAS Consl']:,.2f}")
+st.write(f"**ESGDS Total:** ${total_esgds:,.2f}")
+st.write(f"### 🧾 **Grand Total:** ${df['Total'].sum():,.2f}")
+
+
+
 
 

@@ -4,8 +4,21 @@ import pandas as pd
 st.set_page_config(page_title="Validation Budget Simulator", layout="wide")
 
 # --- Header Section ---
-st.image("GRESB_hor.png", width=250)
-st.title("Validation Budget Simulator")
+from PIL import Image
+import requests
+from io import BytesIO
+
+# Load GRESB logo directly from the web
+logo_url = "https://www.gresb.com/wp-content/uploads/page-press-media-5.png"
+response = requests.get(logo_url)
+logo = Image.open(BytesIO(response.content))
+
+# Display logo and title neatly side by side
+col1, col2 = st.columns([1, 4])
+with col1:
+    st.image(logo, width=180)
+with col2:
+    st.title("Validation Budget Simulator")
 
 # --- Sidebar ---
 st.sidebar.title("Workstreams, Hours & Team Allocation")

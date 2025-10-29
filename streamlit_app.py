@@ -179,16 +179,17 @@ for period in workstreams.keys():
 # ==========================
 #  II. COST DISTRIBUTION CHARTS
 # ==========================
+st.markdown("### 📊 Cost Distribution Charts")
 
 # --- Pie Chart: Cost by Actor ---
-st.markdown("### 🥧 Cost Distribution by Actor")
+st.markdown("#### 🥧 Cost Distribution by Actor")
 
 actor_totals = {
     "GRESB": df["GRESB"].sum(),
+    "ESGDS": df["ESGDS"].sum(),
     "SAS New": df["SAS New"].sum(),
     "SAS Exp": df["SAS Exp"].sum(),
-    "SAS Consl": df["SAS Consl"].sum(),
-    "ESGDS": df["ESGDS"].sum()
+    "SAS Consl": df["SAS Consl"].sum()
 }
 
 pie_df = pd.DataFrame({
@@ -196,12 +197,12 @@ pie_df = pd.DataFrame({
     "Total Cost": list(actor_totals.values())
 })
 
-# Use Altair for consistent colors (ensure alt is imported)
 import altair as alt
 
+# Updated color order and palette
 color_scale = alt.Scale(
-    domain=["GRESB", "SAS New", "SAS Exp", "SAS Consl", "ESGDS"],
-    range=["#00A36C", "#00BFFF", "#1E90FF", "#003366", "#FFA500"]
+    domain=["GRESB", "ESGDS", "SAS New", "SAS Exp", "SAS Consl"],
+    range=["#00A36C", "#800000", "#00BFFF", "#1E90FF", "#003366"]  # Green, Maroon, Blue shades
 )
 
 pie_chart = (
@@ -209,7 +210,7 @@ pie_chart = (
     .mark_arc(outerRadius=110)
     .encode(
         theta="Total Cost",
-        color=alt.Color("Actor", scale=color_scale),
+        color=alt.Color("Actor", scale=color_scale, legend=alt.Legend(title="Actor")),
         tooltip=["Actor", alt.Tooltip("Total Cost", format="$,.0f")]
     )
     .properties(height=400)
@@ -217,22 +218,25 @@ pie_chart = (
 st.altair_chart(pie_chart, use_container_width=True)
 
 # --- Stacked Bar Chart: Cost by Workstream Category ---
-st.markdown("### 📊 Cost Distribution by Workstream Category")
+st.markdown("#### 📅 Cost Distribution by Workstream Category")
 
 stack_df = (
-    df.groupby("Period")[["GRESB", "SAS New", "SAS Exp", "SAS Consl", "ESGDS"]]
+    df.groupby("Period")[["GRESB", "ESGDS", "SAS New", "SAS Exp", "SAS Consl"]]
     .sum()
     .reset_index()
     .melt(id_vars="Period", var_name="Actor", value_name="Cost")
 )
 
+# Chronological order for periods
+period_order = ["Jan - March", "Apr - June", "July - August", "September", "October - December"]
+
 stack_chart = (
     alt.Chart(stack_df)
     .mark_bar()
     .encode(
-        x=alt.X("Period:N", title="Workstream Category"),
+        x=alt.X("Period:N", title="Workstream Category", sort=period_order),
         y=alt.Y("Cost:Q", title="Total Cost ($)", stack="normalize"),
-        color=alt.Color("Actor", scale=color_scale),
+        color=alt.Color("Actor", scale=color_scale, legend=alt.Legend(title="Actor")),
         tooltip=["Period", "Actor", alt.Tooltip("Cost", format="$,.0f")]
     )
     .properties(height=400)
@@ -240,9 +244,9 @@ stack_chart = (
 st.altair_chart(stack_chart, use_container_width=True)
 
 # ==========================
-#  III. VALIDATION SUMMARY
+#  III. SUMMARY SECTION
 # ==========================
-st.markdown("### 🧾 Validation Summary")
+st.markdown("### 🧾 Summary")
 
 if df.empty:
     st.info("No data available yet — please input hours and allocations in the sidebar.")
@@ -252,13 +256,10 @@ else:
     total_cost = df["Total"].sum()
 
     total_gresb = df["GRESB"].sum()
-    total_sas_new = df["SAS New"].sum()
-    total_sas_exp = df["SAS Exp"].sum()
-    total_sas_consl = df["SAS Consl"].sum()
+    total_sas = df["SAS New"].sum() + df["SAS Exp"].sum() + df["SAS Consl"].sum()
     total_esgds = df["ESGDS"].sum()
 
-    total_sas = total_sas_new + total_sas_exp + total_sas_consl
-
+    # --- Key Metrics ---
     col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("🧩 Workstreams", f"{num_workstreams}")
@@ -267,28 +268,36 @@ else:
     with col3:
         st.metric("💵 Total Cost", f"${total_cost:,.2f}")
 
+    # --- Cost Split by Team ---
     st.markdown("---")
-    st.markdown("### 💼 Cost Split by Team")
+    st.markdown("#### 💼 Cost Split by Team")
 
     st.markdown(
         f"""
         <style>
-        .team-header {{font-size: 18px; font-weight: bold;}}
-        .sub-line {{font-size: 15px; font-style: italic; color: #555; margin-left: 15px;}}
+        .team-header {{
+            font-size: 17px;
+            font-weight: 600;
+            color: #222;
+            line-height: 1.6;
+        }}
         </style>
 
         <div class="team-header">GRESB: ${total_gresb:,.2f}</div>
         <div class="team-header">SAS: ${total_sas:,.2f}</div>
-        <div class="sub-line">• SAS New: ${total_sas_new:,.2f}</div>
-        <div class="sub-line">• SAS Exp: ${total_sas_exp:,.2f}</div>
-        <div class="sub-line">• SAS Consl: ${total_sas_consl:,.2f}</div>
         <div class="team-header">ESGDS: ${total_esgds:,.2f}</div>
         """,
         unsafe_allow_html=True,
     )
 
+    # --- Additional Key Facts ---
     st.markdown("---")
     avg_cost_per_hour = total_cost / total_hours if total_hours > 0 else 0
+    cost_per_workstream = total_cost / num_workstreams if num_workstreams > 0 else 0
+    gresb_ratio = (total_gresb / total_cost * 100) if total_cost > 0 else 0
+
     st.info(f"💡 **Average Cost per Hour:** ${avg_cost_per_hour:,.2f}")
+    st.info(f"💡 **Average Cost per Workstream:** ${cost_per_workstream:,.2f}")
+    st.info(f"💡 **GRESB Share of Total Cost:** {gresb_ratio:.1f}%")
 
 

@@ -237,14 +237,15 @@ if st.session_state.saved_scenarios:
             col_load, col_delete = st.columns([1,1])
             with col_load:
                 if st.button("🔁 Load", key=f"load__{sname}"):
-                   try:
-                       saved_inputs = sdata.get("inputs", {})
-                       # Store which scenario to load, and inputs separately.
-                       st.session_state["pending_load_scenario"] = saved_inputs
-                       st.session_state["pending_scenario_name"] = sname
-                       st.experimental_rerun()  # trigger rerun safely
-                   except Exception as e:
-                       st.error(f"Failed to load scenario: {e}")
+                    try:
+                        saved_inputs = sdata.get("inputs", {})
+                        # Store which scenario to load, and inputs separately.
+                        st.session_state["pending_load_scenario"] = saved_inputs
+                        st.session_state["pending_scenario_name"] = sname
+                        st.rerun()  # ← changed from st.experimental_rerun()
+                    except Exception as e:
+                        st.error(f"Failed to load scenario: {e}")
+
  
             with col_delete:
                 if st.button("🗑️ Delete", key=f"del__{sname}"):

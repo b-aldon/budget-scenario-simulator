@@ -114,13 +114,10 @@ if not df.empty:
     df["Estimated Cost ($)"] = df.apply(calc_cost, axis=1)
 
 # --- Main Output Section ---
-st.subheader("Cost per Workstream")
-
-# --- Main Output Section ---
 import pandas as pd
-import plotly.express as px
+import matplotlib.pyplot as plt
 
-st.markdown("## 💼 Validation Budget Simulator")
+st.markdown("Cost per Workstream")
 
 # --- Calculate Costs ---
 results = []
@@ -128,13 +125,11 @@ for period, tasks in workstreams.items():
     for task in tasks:
         hours = st.session_state.get(f"hours_{task}", 0)
         workload = st.session_state.get(f"workload_{task}", {})
-        cost_breakdown = {}
         
-        # GRESB
+        # Cost calculations per team
         gresb_share = workload.get("GRESB", 0)
-        gresb_cost = (hours * gresb_share / 100) * (gresb_monthly / 160)  # approx 160 hrs/month
+        gresb_cost = (hours * gresb_share / 100) * (gresb_monthly / 160)
         
-        # SAS sub-teams
         sas_new_share = workload.get("SAS New", 0)
         sas_new_cost = (hours * sas_new_share / 100) * sas_new_rate
         
@@ -144,9 +139,8 @@ for period, tasks in workstreams.items():
         sas_consl_share = workload.get("SAS Consl", 0)
         sas_consl_cost = (hours * sas_consl_share / 100) * sas_consl_rate
         
-        # ESGDS
         esgds_share = workload.get("ESGDS", 0)
-        esgds_cost = (hours * esgds_share / 100) * (esgds_annual / 2000)  # assume 2000 annual work hours
+        esgds_cost = (hours * esgds_share / 100) * (esgds_annual / 2000)
         
         total_cost = gresb_cost + sas_new_cost + sas_exp_cost + sas_consl_cost + esgds_cost
         
@@ -171,6 +165,7 @@ st.dataframe(df, use_container_width=True)
 
 # --- Bar Chart Visualization ---
 st.markdown("### 📊 Cost Distribution by Actor")
+
 actor_totals = {
     "GRESB": df["GRESB"].sum(),
     "SAS New": df["SAS New"].sum(),
@@ -179,13 +174,16 @@ actor_totals = {
     "ESGDS": df["ESGDS"].sum()
 }
 
-chart_df = pd.DataFrame(list(actor_totals.items()), columns=["Actor", "Total Cost"])
-fig = px.bar(chart_df, x="Actor", y="Total Cost", text_auto=".2s", color="Actor",
-             title="Cost Breakdown by Actor")
-st.plotly_chart(fig, use_container_width=True)
+chart_df = pd.DataFrame({
+    "Actor": list(actor_totals.keys()),
+    "Total Cost": list(actor_totals.values())
+})
+
+chart_df.set_index("Actor", inplace=True)
+st.bar_chart(chart_df)
 
 # --- Summary Section ---
-st.markdown("### 💰 Aggregated Cost Summary")
+st.markdown(" Aggregated Cost Summary")
 
 total_gresb = actor_totals["GRESB"]
 total_sas = actor_totals["SAS New"] + actor_totals["SAS Exp"] + actor_totals["SAS Consl"]
@@ -198,8 +196,3 @@ st.write(f"  • SAS Exp: ${actor_totals['SAS Exp']:,.2f}")
 st.write(f"  • SAS Consl: ${actor_totals['SAS Consl']:,.2f}")
 st.write(f"**ESGDS Total:** ${total_esgds:,.2f}")
 st.write(f"### 🧾 **Grand Total:** ${df['Total'].sum():,.2f}")
-
-
-
-
-

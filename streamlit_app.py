@@ -106,6 +106,62 @@ def calc_cost(row):
 if not df.empty:
     df["Estimated Cost ($)"] = df.apply(calc_cost, axis=1)
 
+# --- SCENARIO SAVE/LOAD FUNCTIONALITY (Phase 1) ---
+import copy
+
+# Initialize storage for saved scenarios
+if "saved_scenarios" not in st.session_state:
+    st.session_state.saved_scenarios = {}
+
+# --- Helper function to capture all sidebar inputs ---
+def capture_current_state():
+    state_snapshot = {}
+    for key, value in st.session_state.items():
+        if any(prefix in key for prefix in ["hours_", "GRESB_", "SAS New_", "SAS Exp_", "SAS Consl_", "ESGDS_", "cost_", "rate_", "share_"]):
+            state_snapshot[key] = copy.deepcopy(value)
+    return state_snapshot
+
+# --- Save Scenario Section ---
+st.markdown("## 💾 Save or Load Scenarios")
+
+with st.expander("💾 Save Current Scenario"):
+    scenario_name = st.text_input("Enter a scenario name:")
+    if st.button("Save Scenario"):
+        if scenario_name.strip() == "":
+            st.warning("Please enter a valid scenario name before saving.")
+        else:
+            # Capture all relevant variables and results
+            saved_data = {
+                "inputs": capture_current_state(),
+                "results": df.to_dict(),
+                "summary": {
+                    "total_cost": df["Total"].sum(),
+                    "total_hours": df["Hours"].sum(),
+                    "total_workstreams": len(df),
+                },
+            }
+
+            # Save to session
+            st.session_state.saved_scenarios[scenario_name] = saved_data
+            st.success(f"✅ Scenario '{scenario_name}' saved successfully!")
+
+# --- View and Load Saved Scenarios ---
+if st.session_state.saved_scenarios:
+    st.markdown("### 📁 Saved Scenarios")
+    for name, data in st.session_state.saved_scenarios.items():
+        with st.expander(f"📊 {name}"):
+            st.write(f"**Total Workstreams:** {data['summary']['total_workstreams']}")
+            st.write(f"**Total Hours:** {data['summary']['total_hours']}")
+            st.write(f"**Total Cost:** ${data['summary']['total_cost']:,.2f}")
+
+            st.dataframe(pd.DataFrame(data["results"]), use_container_width=True)
+
+            if st.button(f"🔄 Load {name}"):
+                # Restore all saved sidebar inputs
+                for k, v in data["inputs"].items():
+                    st.session_state[k] = v
+                st.success(f"Scenario '{name}' loaded successfully! Refresh inputs to see the effect.")
+
 # --- Main Output Section ---
 # --- Main Output Section ---
 st.markdown("## 🧮 Validation Budget Simulator")

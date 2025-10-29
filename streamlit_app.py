@@ -115,43 +115,47 @@ if not df.empty:
 
 # --- Main Output Section ---
 import pandas as pd
+st.markdown("## 💰 Cost per Workstream")
 
-st.markdown("Cost per Workstream")
-
-# --- Calculate Costs ---
 results = []
 for period, tasks in workstreams.items():
     for task in tasks:
         hours = st.session_state.get(f"hours_{task}", 0)
-        workload = st.session_state.get(f"workload_{task}", {})
-        
-        # Cost calculations per team
-        gresb_share = workload.get("GRESB", 0)
-        gresb_cost = (hours * gresb_share / 100) * (GRESB_Monthly_Cost / 160)
-        
-        sas_new_share = workload.get("SAS New", 0)
-        sas_new_cost = (hours * sas_new_share / 100) * sas_new_rate
-        
-        sas_exp_share = workload.get("SAS Exp", 0)
-        sas_exp_cost = (hours * sas_exp_share / 100) * sas_exp_rate
-        
-        sas_consl_share = workload.get("SAS Consl", 0)
-        sas_consl_cost = (hours * sas_consl_share / 100) * sas_consl_rate
-        
-        esgds_share = workload.get("ESGDS", 0)
-        esgds_cost = (hours * esgds_share / 100) * (esgds_annual / 2000)
-        
-        total_cost = gresb_cost + sas_new_cost + sas_exp_cost + sas_consl_cost + esgds_cost
-        
+        workload = {
+            "GRESB": st.session_state.get(f"GRESB_{task}", 0),
+            "SAS New": st.session_state.get(f"SAS New_{task}", 0),
+            "SAS Exp": st.session_state.get(f"SAS Exp_{task}", 0),
+            "SAS Consl": st.session_state.get(f"SAS Consl_{task}", 0),
+            "ESGDS": st.session_state.get(f"ESGDS_{task}", 0),
+        }
+
+        # ✅ Use consistent variable names defined earlier
+        gresb_share = workload["GRESB"]
+        gresb_cost_calc = (hours * gresb_share / 100) * (gresb_cost / 160)  # Approx hourly
+
+        sas_new_share = workload["SAS New"]
+        sas_new_cost_calc = (hours * sas_new_share / 100) * sas_new
+
+        sas_exp_share = workload["SAS Exp"]
+        sas_exp_cost_calc = (hours * sas_exp_share / 100) * sas_exp
+
+        sas_consl_share = workload["SAS Consl"]
+        sas_consl_cost_calc = (hours * sas_consl_share / 100) * sas_consl
+
+        esgds_share = workload["ESGDS"]
+        esgds_cost_calc = (hours * esgds_share / 100) * (esgds_cost / 2000)
+
+        total_cost = gresb_cost_calc + sas_new_cost_calc + sas_exp_cost_calc + sas_consl_cost_calc + esgds_cost_calc
+
         results.append({
             "Period": period,
             "Workstream": task,
             "Hours": hours,
-            "GRESB": gresb_cost,
-            "SAS New": sas_new_cost,
-            "SAS Exp": sas_exp_cost,
-            "SAS Consl": sas_consl_cost,
-            "ESGDS": esgds_cost,
+            "GRESB": gresb_cost_calc,
+            "SAS New": sas_new_cost_calc,
+            "SAS Exp": sas_exp_cost_calc,
+            "SAS Consl": sas_consl_cost_calc,
+            "ESGDS": esgds_cost_calc,
             "Total": total_cost
         })
 
@@ -182,7 +186,7 @@ chart_df.set_index("Actor", inplace=True)
 st.bar_chart(chart_df)
 
 # --- Summary Section ---
-st.markdown(" Aggregated Cost Summary")
+st.markdown("## 🧾 Aggregated Cost Summary")
 
 total_gresb = actor_totals["GRESB"]
 total_sas = actor_totals["SAS New"] + actor_totals["SAS Exp"] + actor_totals["SAS Consl"]
@@ -194,4 +198,5 @@ st.write(f"  • SAS New: ${actor_totals['SAS New']:,.2f}")
 st.write(f"  • SAS Exp: ${actor_totals['SAS Exp']:,.2f}")
 st.write(f"  • SAS Consl: ${actor_totals['SAS Consl']:,.2f}")
 st.write(f"**ESGDS Total:** ${total_esgds:,.2f}")
-st.write(f"### 🧾 **Grand Total:** ${df['Total'].sum():,.2f}")
+st.write(f"### 💵 **Grand Total:** ${df['Total'].sum():,.2f}")
+

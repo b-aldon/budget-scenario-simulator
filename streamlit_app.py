@@ -122,6 +122,25 @@ def capture_current_state():
     return state_snapshot
 
 # --- Save Scenario Section ---
+# --- SCENARIO SAVE/LOAD FUNCTIONALITY (Phase 1 - FIXED) ---
+import copy
+
+# Initialize storage for saved scenarios
+if "saved_scenarios" not in st.session_state:
+    st.session_state.saved_scenarios = {}
+
+# --- Helper function to capture all sidebar inputs ---
+def capture_current_state():
+    state_snapshot = {}
+    for key, value in st.session_state.items():
+        if any(prefix in key for prefix in [
+            "hours_", "GRESB_", "SAS New_", "SAS Exp_", "SAS Consl_", "ESGDS_",
+            "cost_", "rate_", "share_"
+        ]):
+            state_snapshot[key] = copy.deepcopy(value)
+    return state_snapshot
+
+# --- Save Scenario Section ---
 st.markdown("## 💾 Save or Load Scenarios")
 
 with st.expander("💾 Save Current Scenario"):
@@ -130,20 +149,22 @@ with st.expander("💾 Save Current Scenario"):
         if scenario_name.strip() == "":
             st.warning("Please enter a valid scenario name before saving.")
         else:
-            # Capture all relevant variables and results
-            saved_data = {
-                "inputs": capture_current_state(),
-                "results": df.to_dict(),
-                "summary": {
-                    "total_cost": df["Total"].sum(),
-                    "total_hours": df["Hours"].sum(),
-                    "total_workstreams": len(df),
-                },
-            }
+            # Check if df exists and has necessary columns
+            if "df" in locals() and "Total" in df.columns and "Hours" in df.columns:
+                saved_data = {
+                    "inputs": capture_current_state(),
+                    "results": df.to_dict(),
+                    "summary": {
+                        "total_cost": float(df["Total"].sum()),
+                        "total_hours": float(df["Hours"].sum()),
+                        "total_workstreams": len(df),
+                    },
+                }
 
-            # Save to session
-            st.session_state.saved_scenarios[scenario_name] = saved_data
-            st.success(f"✅ Scenario '{scenario_name}' saved successfully!")
+                st.session_state.saved_scenarios[scenario_name] = saved_data
+                st.success(f"✅ Scenario '{scenario_name}' saved successfully!")
+            else:
+                st.warning("⚠️ Please run the model first before saving a scenario.")
 
 # --- View and Load Saved Scenarios ---
 if st.session_state.saved_scenarios:
@@ -154,13 +175,15 @@ if st.session_state.saved_scenarios:
             st.write(f"**Total Hours:** {data['summary']['total_hours']}")
             st.write(f"**Total Cost:** ${data['summary']['total_cost']:,.2f}")
 
-            st.dataframe(pd.DataFrame(data["results"]), use_container_width=True)
+            # Safely rebuild dataframe from saved dict
+            df_preview = pd.DataFrame(data["results"])
+            st.dataframe(df_preview, use_container_width=True)
 
             if st.button(f"🔄 Load {name}"):
-                # Restore all saved sidebar inputs
                 for k, v in data["inputs"].items():
                     st.session_state[k] = v
                 st.success(f"Scenario '{name}' loaded successfully! Refresh inputs to see the effect.")
+
 
 # --- Main Output Section ---
 # --- Main Output Section ---

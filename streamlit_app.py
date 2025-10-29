@@ -107,7 +107,13 @@ if not df.empty:
     df["Estimated Cost ($)"] = df.apply(calc_cost, axis=1)
 
 # --- Main Output Section ---
-st.markdown("## 💰 Validation Budget Simulator")
+# --- Main Output Section ---
+st.markdown("## 🧮 Validation Budget Simulator")
+
+# ==========================
+#  I. COST OVERVIEW TABLE
+# ==========================
+st.markdown("### 📋 Cost Overview")
 
 results = []
 for period, tasks in workstreams.items():
@@ -121,23 +127,15 @@ for period, tasks in workstreams.items():
             "ESGDS": st.session_state.get(f"ESGDS_{task}", 0),
         }
 
-        # ✅ Use consistent variable names defined earlier
-        gresb_share = workload["GRESB"]
-        gresb_cost_calc = (hours * gresb_share / 100) * (gresb_cost / 160)  # Approx hourly
+        gresb_cost_calc = (hours * workload["GRESB"] / 100) * (gresb_cost / 160)
+        sas_new_cost_calc = (hours * workload["SAS New"] / 100) * sas_new
+        sas_exp_cost_calc = (hours * workload["SAS Exp"] / 100) * sas_exp
+        sas_consl_cost_calc = (hours * workload["SAS Consl"] / 100) * sas_consl
+        esgds_cost_calc = (hours * workload["ESGDS"] / 100) * (esgds_cost / 2000)
 
-        sas_new_share = workload["SAS New"]
-        sas_new_cost_calc = (hours * sas_new_share / 100) * sas_new
-
-        sas_exp_share = workload["SAS Exp"]
-        sas_exp_cost_calc = (hours * sas_exp_share / 100) * sas_exp
-
-        sas_consl_share = workload["SAS Consl"]
-        sas_consl_cost_calc = (hours * sas_consl_share / 100) * sas_consl
-
-        esgds_share = workload["ESGDS"]
-        esgds_cost_calc = (hours * esgds_share / 100) * (esgds_cost / 2000)
-
-        total_cost = gresb_cost_calc + sas_new_cost_calc + sas_exp_cost_calc + sas_consl_cost_calc + esgds_cost_calc
+        total_cost = (
+            gresb_cost_calc + sas_new_cost_calc + sas_exp_cost_calc + sas_consl_cost_calc + esgds_cost_calc
+        )
 
         results.append({
             "Period": period,
@@ -151,128 +149,99 @@ for period, tasks in workstreams.items():
             "Total": total_cost
         })
 
-# --- Convert to DataFrame ---
 df = pd.DataFrame(results)
-df.index = df.index + 1  # Start numbering at 1
+df.index = df.index + 1
 
-# --- Collapsible Workstream Cards by Period ---
-for period in df["Period"].unique():
-    with st.expander(f"📅 {period}", expanded=True):
-        period_df = df[df["Period"] == period].copy()
-
-        # Round numeric columns for readability
-        numeric_cols = period_df.select_dtypes(include=["float", "int"]).columns
-        period_df[numeric_cols] = period_df[numeric_cols].round(2)
-
-        # Display tidy dataframe
+# Group inside collapsible cards for each Period
+for period in workstreams.keys():
+    with st.expander(f"📁 {period}", expanded=False):
+        period_df = df[df["Period"] == period][
+            ["Workstream", "Hours", "GRESB", "SAS New", "SAS Exp", "SAS Consl", "ESGDS", "Total"]
+        ]
         st.dataframe(
-            period_df[
-                [
-                    "Workstream",
-                    "Hours",
-                    "GRESB",
-                    "SAS New",
-                    "SAS Exp",
-                    "SAS Consl",
-                    "ESGDS",
-                    "Total"
-                ]
-            ],
+            period_df.style.format({
+                "Hours": "{:.0f}",
+                "GRESB": "${:,.0f}",
+                "SAS New": "${:,.0f}",
+                "SAS Exp": "${:,.0f}",
+                "SAS Consl": "${:,.0f}",
+                "ESGDS": "${:,.0f}",
+                "Total": "${:,.0f}",
+            }),
             use_container_width=True
         )
 
-        # Subtotal summary per period
-        total_cost = period_df["Total"].sum()
-        total_hours = period_df["Hours"].sum()
-        st.markdown(
-            f"**Subtotal for {period}:** 💰 ${total_cost:,.0f} 🕒 {total_hours:,.0f} hours"
-        )
+# ==========================
+#  II. COST DISTRIBUTION CHARTS
+# ==========================
 
-st.divider()
+# --- Pie Chart: Cost by Actor ---
+st.markdown("### 🥧 Cost Distribution by Actor")
 
-# --- Charts: Pie + Stacked Bar (Altair) ---
+actor_totals = {
+    "GRESB": df["GRESB"].sum(),
+    "SAS New": df["SAS New"].sum(),
+    "SAS Exp": df["SAS Exp"].sum(),
+    "SAS Consl": df["SAS Consl"].sum(),
+    "ESGDS": df["ESGDS"].sum()
+}
+
+pie_df = pd.DataFrame({
+    "Actor": list(actor_totals.keys()),
+    "Total Cost": list(actor_totals.values())
+})
+
+# Use Altair for consistent colors (ensure alt is imported)
 import altair as alt
 
-# Guard: if df is empty, show a message
-if df.empty:
-    st.info("Enter workstream hours and allocations in the sidebar to generate charts.")
-else:
-    # ---------- Pie chart data ----------
-    actor_totals = {
-        "GRESB": df["GRESB"].sum(),
-        "SAS New": df["SAS New"].sum(),
-        "SAS Exp": df["SAS Exp"].sum(),
-        "SAS Consl": df["SAS Consl"].sum(),
-        "ESGDS": df["ESGDS"].sum()
-    }
+color_scale = alt.Scale(
+    domain=["GRESB", "SAS New", "SAS Exp", "SAS Consl", "ESGDS"],
+    range=["#00A36C", "#00BFFF", "#1E90FF", "#003366", "#FFA500"]
+)
 
-    pie_df = pd.DataFrame({
-        "Actor": list(actor_totals.keys()),
-        "Total Cost": list(actor_totals.values())
-    })
-
-    # color scheme (GRESB green, SAS shades of blue, ESGDS pink)
-    color_scale = alt.Scale(
-        domain=["GRESB", "SAS New", "SAS Exp", "SAS Consl", "ESGDS"],
-        range=["#2E8B57", "#A7C7E7", "#4682B4", "#1E3A8A", "#FF69B4"]
+pie_chart = (
+    alt.Chart(pie_df)
+    .mark_arc(outerRadius=110)
+    .encode(
+        theta="Total Cost",
+        color=alt.Color("Actor", scale=color_scale),
+        tooltip=["Actor", alt.Tooltip("Total Cost", format="$,.0f")]
     )
+    .properties(height=400)
+)
+st.altair_chart(pie_chart, use_container_width=True)
 
-    st.markdown("### 🥧 Cost Distribution by Actor")
-    pie_chart = (
-        alt.Chart(pie_df)
-        .mark_arc(outerRadius=120)
-        .encode(
-            theta=alt.Theta(field="Total Cost", type="quantitative"),
-            color=alt.Color(field="Actor", type="nominal", scale=color_scale, legend=alt.Legend(title="Actor")),
-            tooltip=[
-                alt.Tooltip("Actor", title="Team"),
-                alt.Tooltip("Total Cost", title="Total Cost", format=",.2f")
-            ]
-        )
-        .properties(width=400, height=350)
+# --- Stacked Bar Chart: Cost by Workstream Category ---
+st.markdown("### 📊 Cost Distribution by Workstream Category")
+
+stack_df = (
+    df.groupby("Period")[["GRESB", "SAS New", "SAS Exp", "SAS Consl", "ESGDS"]]
+    .sum()
+    .reset_index()
+    .melt(id_vars="Period", var_name="Actor", value_name="Cost")
+)
+
+stack_chart = (
+    alt.Chart(stack_df)
+    .mark_bar()
+    .encode(
+        x=alt.X("Period:N", title="Workstream Category"),
+        y=alt.Y("Cost:Q", title="Total Cost ($)", stack="normalize"),
+        color=alt.Color("Actor", scale=color_scale),
+        tooltip=["Period", "Actor", alt.Tooltip("Cost", format="$,.0f")]
     )
-    st.altair_chart(pie_chart, use_container_width=True)
+    .properties(height=400)
+)
+st.altair_chart(stack_chart, use_container_width=True)
 
-    st.markdown("---")
-
-    # ---------- Stacked bar: cost per period ----------
-    st.markdown("### 📅 Cost Distribution by Workstream Category (stacked)")
-
-    # Aggregate by Period
-    # Ensure the actor columns exist and are numeric
-    period_df = df.groupby("Period")[["GRESB", "SAS New", "SAS Exp", "SAS Consl", "ESGDS"]].sum().reset_index()
-
-    # Melt for Altair stacked bars
-    period_melted = period_df.melt(id_vars="Period", var_name="Actor", value_name="Total Cost")
-
-    # Define ordering for Periods to ensure chronological bars
-    period_order = ["Jan - March", "Apr - June", "July - August", "September", "October - December"]
-
-    stacked_bar = (
-        alt.Chart(period_melted)
-        .mark_bar()
-        .encode(
-            x=alt.X("Period:N", sort=period_order, title="Workstream Category"),
-            y=alt.Y("Total Cost:Q", title="Total Cost ($)"),
-            color=alt.Color("Actor:N", scale=color_scale, legend=alt.Legend(title="Actor")),
-            tooltip=[
-                alt.Tooltip("Period", title="Category"),
-                alt.Tooltip("Actor", title="Team"),
-                alt.Tooltip("Total Cost", title="Cost ($)", format=",.2f")
-            ]
-        )
-        .properties(width=700, height=420)
-    )
-
-    st.altair_chart(stacked_bar, use_container_width=True)
-
-# --- Validation Summary Section ---
-st.markdown("## 🧾 Validation Summary")
+# ==========================
+#  III. VALIDATION SUMMARY
+# ==========================
+st.markdown("### 🧾 Validation Summary")
 
 if df.empty:
     st.info("No data available yet — please input hours and allocations in the sidebar.")
 else:
-    # --- Core summary metrics ---
     num_workstreams = df["Workstream"].nunique()
     total_hours = df["Hours"].sum()
     total_cost = df["Total"].sum()
@@ -285,10 +254,9 @@ else:
 
     total_sas = total_sas_new + total_sas_exp + total_sas_consl
 
-    # --- Summary Cards Layout ---
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("🧩 Number of Workstreams", f"{num_workstreams}")
+        st.metric("🧩 Workstreams", f"{num_workstreams}")
     with col2:
         st.metric("⏱️ Total Hours", f"{total_hours:,.0f}")
     with col3:
@@ -297,41 +265,25 @@ else:
     st.markdown("---")
     st.markdown("### 💼 Cost Split by Team")
 
-    colA, colB, colC = st.columns(3)
-    with colA:
-        st.markdown(f"**GRESB:** ${total_gresb:,.2f}")
-    with colB:
-        st.markdown(
-            f"**SAS:** ${total_sas:,.2f}  \n"
-            f" • SAS New: ${total_sas_new:,.2f}  \n"
-            f" • SAS Exp: ${total_sas_exp:,.2f}  \n"
-            f" • SAS Consl: ${total_sas_consl:,.2f}"
-        )
-    with colC:
-        st.markdown(f"**ESGDS:** ${total_esgds:,.2f}")
+    st.markdown(
+        f"""
+        <style>
+        .team-header {{font-size: 18px; font-weight: bold;}}
+        .sub-line {{font-size: 15px; font-style: italic; color: #555; margin-left: 15px;}}
+        </style>
+
+        <div class="team-header">GRESB: ${total_gresb:,.2f}</div>
+        <div class="team-header">SAS: ${total_sas:,.2f}</div>
+        <div class="sub-line">• SAS New: ${total_sas_new:,.2f}</div>
+        <div class="sub-line">• SAS Exp: ${total_sas_exp:,.2f}</div>
+        <div class="sub-line">• SAS Consl: ${total_sas_consl:,.2f}</div>
+        <div class="team-header">ESGDS: ${total_esgds:,.2f}</div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     st.markdown("---")
-
-    # --- Enhancement: highlight ratios and insights ---
     avg_cost_per_hour = total_cost / total_hours if total_hours > 0 else 0
-    highest_cost_actor = max(
-        {
-            "GRESB": total_gresb,
-            "SAS": total_sas,
-            "ESGDS": total_esgds,
-        },
-        key=lambda x: {
-            "GRESB": total_gresb,
-            "SAS": total_sas,
-            "ESGDS": total_esgds,
-        }[x],
-    )
+    st.info(f"💡 **Average Cost per Hour:** ${avg_cost_per_hour:,.2f}")
 
-    st.markdown("### 📊 Key Insights")
-    st.info(
-        f"💡 **Average Cost per Hour:** ${avg_cost_per_hour:,.2f}  \n"
-        f"🏆 **Highest Contributor:** {highest_cost_actor}"
-    )
-
-    st.success("✅ Validation cost simulation completed successfully!")
 

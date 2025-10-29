@@ -9,9 +9,6 @@ import requests
 from io import BytesIO
 
 # Load GRESB logo directly from the web
-logo_url = "https://www.gresb.com/wp-content/uploads/page-press-media-5.png"
-response = requests.get(logo_url)
-logo = Image.open(BytesIO(response.content))
 
 # Display logo and title neatly side by side
 col1, col2 = st.columns([1, 4])

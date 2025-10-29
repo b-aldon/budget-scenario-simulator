@@ -243,7 +243,7 @@ if st.session_state.saved_scenarios:
                        st.session_state["pending_load_scenario"] = saved_inputs
                        st.session_state["pending_scenario_name"] = sname
                        st.experimental_rerun()  # trigger rerun safely
-                    except Exception as e:
+                   except Exception as e:
                        st.error(f"Failed to load scenario: {e}")
  
             with col_delete:

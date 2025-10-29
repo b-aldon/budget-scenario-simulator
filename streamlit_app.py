@@ -240,7 +240,8 @@ for period, tasks in workstreams.items():
             "Total": total_cost
         })
 
-df = pd.DataFrame(results)
+df = pd.DataFrame(results) 
+st.session_state["model_df"] = df
 df.index = df.index + 1
 
 # --- Create header row manually ---

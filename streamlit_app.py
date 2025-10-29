@@ -1,6 +1,18 @@
 import streamlit as st
 import pandas as pd
 
+# --- Safe scenario reloader ---
+if "pending_load_scenario" in st.session_state:
+    try:
+        pending_inputs = st.session_state.pop("pending_load_scenario", {})
+        scenario_name = st.session_state.pop("pending_scenario_name", "Unknown")
+        for key, val in pending_inputs.items():
+            if key in st.session_state:
+                st.session_state[key] = val
+        st.toast(f"✅ Scenario '{scenario_name}' loaded successfully!")
+    except Exception as e:
+        st.warning(f"⚠️ Could not restore some scenario values: {e}")
+
 st.set_page_config(page_title="Validation Budget Simulator", layout="wide")
 
 # --- Header Section ---
@@ -225,16 +237,15 @@ if st.session_state.saved_scenarios:
             col_load, col_delete = st.columns([1,1])
             with col_load:
                 if st.button("🔁 Load", key=f"load__{sname}"):
-                    try:
-                        saved_inputs = sdata.get("inputs", {})
-                        # Set only keys that already exist in session_state to avoid runtime issues.
-                        for k, v in saved_inputs.items():
-                            if k in st.session_state:
-                                st.session_state[k] = v
-                        st.success(f"✅ Scenario '{sname}' loaded into sidebar inputs.")
-                        st.experimental_rerun()
+                   try:
+                       saved_inputs = sdata.get("inputs", {})
+                       # Store which scenario to load, and inputs separately.
+                       st.session_state["pending_load_scenario"] = saved_inputs
+                       st.session_state["pending_scenario_name"] = sname
+                       st.experimental_rerun()  # trigger rerun safely
                     except Exception as e:
-                        st.error(f"Failed to load scenario: {e}")
+                       st.error(f"Failed to load scenario: {e}")
+ 
             with col_delete:
                 if st.button("🗑️ Delete", key=f"del__{sname}"):
                     del st.session_state.saved_scenarios[sname]

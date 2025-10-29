@@ -11,11 +11,7 @@ from io import BytesIO
 # Load GRESB logo directly from the web
 
 # Display logo and title neatly side by side
-col1, col2 = st.columns([1, 4])
-with col1:
-    st.image(logo, width=180)
-with col2:
-    st.title("Validation Budget Simulator")
+
 
 # --- Sidebar ---
 st.sidebar.title("Workstreams, Hours & Team Allocation")

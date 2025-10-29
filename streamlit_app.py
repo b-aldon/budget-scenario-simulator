@@ -154,21 +154,6 @@ df = pd.DataFrame(results)
 df.index = df.index + 1
 
 # --- Create header row manually ---
-st.markdown("""
-<table style="width:100%; border-collapse:collapse;">
-<tr style="background-color:#E0F0E9; font-weight:bold;">
-    <th style="text-align:left; padding:6px;">Period</th>
-    <th style="text-align:left; padding:6px;">Workstream</th>
-    <th style="text-align:right; padding:6px;">Hours</th>
-    <th style="text-align:right; padding:6px;">GRESB</th>
-    <th style="text-align:right; padding:6px;">SAS New</th>
-    <th style="text-align:right; padding:6px;">SAS Exp</th>
-    <th style="text-align:right; padding:6px;">SAS Consl</th>
-    <th style="text-align:right; padding:6px;">ESGDS</th>
-    <th style="text-align:right; padding:6px;">Total</th>
-</tr>
-</table>
-""", unsafe_allow_html=True)
 
 # --- Render each Period as a collapsible row ---
 for period in workstreams.keys():

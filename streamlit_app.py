@@ -197,81 +197,81 @@ for period in df["Period"].unique():
 
 st.divider()
 
-# --- Bar Chart: Cost per Workstream Category (Stacked by Actor) ---
-st.markdown("### 📅 Cost Distribution by Workstream Category")
-
-# Group by period and sum actor costs
-period_df = df.groupby("Period")[["GRESB", "SAS New", "SAS Exp", "SAS Consl", "ESGDS"]].sum().reset_index()
-
-# Melt dataframe for stacked bar format
-period_melted = period_df.melt(id_vars="Period", var_name="Actor", value_name="Total Cost")
-
-# Define consistent color palette (same as pie chart)
-color_scale = alt.Scale(
-    domain=["GRESB", "SAS New", "SAS Exp", "SAS Consl", "ESGDS"],
-    range=["#2E8B57", "#A7C7E7", "#4682B4", "#1E3A8A", "#FF69B4"]
-)
-
-# Create stacked bar chart
-stacked_bar = (
-    alt.Chart(period_melted)
-    .mark_bar()
-    .encode(
-        x=alt.X("Period:N", title="Workstream Category", sort=["Jan - March", "Apr - June", "July - August", "September", "October - December"]),
-        y=alt.Y("Total Cost:Q", title="Total Cost ($)"),
-        color=alt.Color("Actor:N", scale=color_scale, legend=alt.Legend(title="Actor")),
-        tooltip=[
-            alt.Tooltip("Period", title="Category"),
-            alt.Tooltip("Actor", title="Team"),
-            alt.Tooltip("Total Cost", title="Cost ($)", format=",.2f")
-        ]
-    )
-    .properties(width=700, height=400)
-)
-
-st.altair_chart(stacked_bar, use_container_width=True)
-
-# --- Pie Chart Visualization ---
+# --- Charts: Pie + Stacked Bar (Altair) ---
 import altair as alt
 
-st.markdown("### 🥧 Cost Distribution by Actor")
+# Guard: if df is empty, show a message
+if df.empty:
+    st.info("Enter workstream hours and allocations in the sidebar to generate charts.")
+else:
+    # ---------- Pie chart data ----------
+    actor_totals = {
+        "GRESB": df["GRESB"].sum(),
+        "SAS New": df["SAS New"].sum(),
+        "SAS Exp": df["SAS Exp"].sum(),
+        "SAS Consl": df["SAS Consl"].sum(),
+        "ESGDS": df["ESGDS"].sum()
+    }
 
-actor_totals = {
-    "GRESB": df["GRESB"].sum(),
-    "SAS New": df["SAS New"].sum(),
-    "SAS Exp": df["SAS Exp"].sum(),
-    "SAS Consl": df["SAS Consl"].sum(),
-    "ESGDS": df["ESGDS"].sum()
-}
+    pie_df = pd.DataFrame({
+        "Actor": list(actor_totals.keys()),
+        "Total Cost": list(actor_totals.values())
+    })
 
-chart_df = pd.DataFrame({
-    "Actor": list(actor_totals.keys()),
-    "Total Cost": list(actor_totals.values())
-})
-
-# Define custom colors (as per your scheme)
-color_scale = alt.Scale(
-    domain=["GRESB", "SAS New", "SAS Exp", "SAS Consl", "ESGDS"],
-    range=["#2E8B57", "#A7C7E7", "#4682B4", "#1E3A8A", "#FF69B4"]  # Green, light blue, medium blue, dark blue, pink
-)
-
-# Create the pie chart
-pie_chart = (
-    alt.Chart(chart_df)
-    .mark_arc(outerRadius=120)
-    .encode(
-        theta=alt.Theta(field="Total Cost", type="quantitative"),
-        color=alt.Color(field="Actor", type="nominal", scale=color_scale, legend=alt.Legend(title="Actor")),
-        tooltip=[
-            alt.Tooltip("Actor", title="Team"),
-            alt.Tooltip("Total Cost", title="Total Cost", format="$.2f")
-        ]
+    # color scheme (GRESB green, SAS shades of blue, ESGDS pink)
+    color_scale = alt.Scale(
+        domain=["GRESB", "SAS New", "SAS Exp", "SAS Consl", "ESGDS"],
+        range=["#2E8B57", "#A7C7E7", "#4682B4", "#1E3A8A", "#FF69B4"]
     )
-    .properties(width=500, height=400)
-)
 
-# Display the chart
-st.altair_chart(pie_chart, use_container_width=True)
+    st.markdown("### 🥧 Cost Distribution by Actor")
+    pie_chart = (
+        alt.Chart(pie_df)
+        .mark_arc(outerRadius=120)
+        .encode(
+            theta=alt.Theta(field="Total Cost", type="quantitative"),
+            color=alt.Color(field="Actor", type="nominal", scale=color_scale, legend=alt.Legend(title="Actor")),
+            tooltip=[
+                alt.Tooltip("Actor", title="Team"),
+                alt.Tooltip("Total Cost", title="Total Cost", format=",.2f")
+            ]
+        )
+        .properties(width=400, height=350)
+    )
+    st.altair_chart(pie_chart, use_container_width=True)
+
+    st.markdown("---")
+
+    # ---------- Stacked bar: cost per period ----------
+    st.markdown("### 📅 Cost Distribution by Workstream Category (stacked)")
+
+    # Aggregate by Period
+    # Ensure the actor columns exist and are numeric
+    period_df = df.groupby("Period")[["GRESB", "SAS New", "SAS Exp", "SAS Consl", "ESGDS"]].sum().reset_index()
+
+    # Melt for Altair stacked bars
+    period_melted = period_df.melt(id_vars="Period", var_name="Actor", value_name="Total Cost")
+
+    # Define ordering for Periods to ensure chronological bars
+    period_order = ["Jan - March", "Apr - June", "July - August", "September", "October - December"]
+
+    stacked_bar = (
+        alt.Chart(period_melted)
+        .mark_bar()
+        .encode(
+            x=alt.X("Period:N", sort=period_order, title="Workstream Category"),
+            y=alt.Y("Total Cost:Q", title="Total Cost ($)"),
+            color=alt.Color("Actor:N", scale=color_scale, legend=alt.Legend(title="Actor")),
+            tooltip=[
+                alt.Tooltip("Period", title="Category"),
+                alt.Tooltip("Actor", title="Team"),
+                alt.Tooltip("Total Cost", title="Cost ($)", format=",.2f")
+            ]
+        )
+        .properties(width=700, height=420)
+    )
+
+    st.altair_chart(stacked_bar, use_container_width=True)
 
 # --- Aggregated Summary Section ---
 st.markdown("## 🧾 Aggregated Cost Summary")

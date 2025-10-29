@@ -115,7 +115,6 @@ if not df.empty:
 
 # --- Main Output Section ---
 import pandas as pd
-import matplotlib.pyplot as plt
 
 st.markdown("Cost per Workstream")
 

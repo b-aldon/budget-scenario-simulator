@@ -87,7 +87,7 @@ st.sidebar.markdown("---")
 st.sidebar.title("Cost Details")
 
 with st.sidebar.expander("GRESB"):
-    gresb_cost = st.number_input("GRESB_Monthly_Cost ($)", min_value=0.0, value=1000.0, step=100.0)
+    gresb_cost = st.number_input("GRESB Monthly Cost ($)", min_value=0.0, value=1000.0, step=100.0)
 
 with st.sidebar.expander("SAS"):
     sas_new = st.number_input("SAS New Reviewer Rate ($/hr)", min_value=0.0, value=25.0, step=1.0)

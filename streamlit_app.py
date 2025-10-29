@@ -329,7 +329,6 @@ for period in workstreams.keys():
 # ==========================
 #  II. COST DISTRIBUTION CHARTS
 # ==========================
-st.markdown("### 📊 Cost Distribution Charts")
 
 # --- Pie Chart: Cost by Actor ---
 st.markdown("#### 🥧 Cost Distribution by Actor")

@@ -122,7 +122,7 @@ def capture_current_state():
     return state_snapshot
 
 # --- Save Scenario Section ---
-# --- SCENARIO SAVE/LOAD FUNCTIONALITY (Phase 1.5 – Interactive Manager) ---
+# --- SCENARIO SAVE/LOAD FUNCTIONALITY (Phase 1.5 – FIXED + CONNECTED) ---
 import copy
 
 # Initialize storage for saved scenarios
@@ -146,12 +146,15 @@ st.markdown("## 💾 Scenario Manager")
 # --- SAVE SCENARIO ---
 with st.expander("💾 Save Current Scenario"):
     scenario_name = st.text_input("Enter a scenario name:")
+
     if st.button("Save Scenario"):
         if scenario_name.strip() == "":
             st.warning("Please enter a valid scenario name before saving.")
         else:
-             if "model_df" in st.session_state and not st.session_state["model_df"].empty:
-               df = st.session_state["model_df"]
+            # ✅ Use stored DataFrame from session_state
+            if "model_df" in st.session_state and not st.session_state["model_df"].empty:
+                df = st.session_state["model_df"]
+
                 saved_data = {
                     "inputs": capture_current_state(),
                     "results": df.to_dict(),
@@ -162,7 +165,7 @@ with st.expander("💾 Save Current Scenario"):
                     },
                 }
 
-                # Overwrite if scenario exists
+                # Overwrite if scenario already exists
                 st.session_state.saved_scenarios[scenario_name] = saved_data
                 st.success(f"✅ Scenario '{scenario_name}' saved/updated successfully!")
             else:
@@ -179,6 +182,7 @@ if st.session_state.saved_scenarios:
             st.write(f"**Total Hours:** {data['summary']['total_hours']}")
             st.write(f"**Total Cost:** ${data['summary']['total_cost']:,.2f}")
 
+            # Build a dataframe preview safely
             df_preview = pd.DataFrame(data["results"])
             st.dataframe(df_preview, use_container_width=True)
 
@@ -187,7 +191,7 @@ if st.session_state.saved_scenarios:
                 if st.button(f"🔄 Load", key=f"load_{name}"):
                     for k, v in data["inputs"].items():
                         st.session_state[k] = v
-                    st.success(f"✅ Scenario '{name}' loaded! Sidebar will reflect saved inputs.")
+                    st.success(f"✅ Scenario '{name}' loaded successfully! Sidebar updated.")
                     st.rerun()
 
             with col2:
@@ -195,7 +199,7 @@ if st.session_state.saved_scenarios:
                     del st.session_state.saved_scenarios[name]
                     st.warning(f"Scenario '{name}' deleted.")
                     st.rerun()
-
+     
 
 # --- Main Output Section ---
 # --- Main Output Section ---

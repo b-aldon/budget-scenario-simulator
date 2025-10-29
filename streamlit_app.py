@@ -163,8 +163,40 @@ for period, tasks in workstreams.items():
 df = pd.DataFrame(results)
 df.index = df.index + 1  # start numbering at 1
 
-# --- Display Table ---
-st.dataframe(df, use_container_width=True)
+# Group data by period
+for period in output_df["Period"].unique():
+    with st.expander(f"📅 {period}", expanded=True):
+        period_df = output_df[output_df["Period"] == period].copy()
+
+        # Optional: round off numeric columns for display
+        numeric_cols = period_df.select_dtypes(include=["float", "int"]).columns
+        period_df[numeric_cols] = period_df[numeric_cols].round(2)
+
+        # Display the dataframe without the index
+        st.dataframe(
+            period_df[
+                [
+                    "Workstream",
+                    "Hours",
+                    "GRESB",
+                    "SAS New",
+                    "SAS Exp",
+                    "SAS Consl",
+                    "ESGDS",
+                    "Total"
+                ]
+            ],
+            use_container_width=True
+        )
+
+        # Add a mini summary below each expander
+        total_cost = period_df["Total"].sum()
+        total_hours = period_df["Hours"].sum()
+        st.markdown(
+            f"**Subtotal:** 💰 ${total_cost:,.0f} 🕒 {total_hours:,.0f} hours"
+        )
+
+st.divider()
 
 # --- Bar Chart Visualization ---
 st.markdown("### 📊 Cost Distribution by Actor")

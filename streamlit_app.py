@@ -150,8 +150,8 @@ with st.expander("💾 Save Current Scenario"):
         if scenario_name.strip() == "":
             st.warning("Please enter a valid scenario name before saving.")
         else:
-           if "model_df" in st.session_state and not st.session_state["model_df"].empty:
-    df = st.session_state["model_df"]
+             if "model_df" in st.session_state and not st.session_state["model_df"].empty:
+               df = st.session_state["model_df"]
                 saved_data = {
                     "inputs": capture_current_state(),
                     "results": df.to_dict(),

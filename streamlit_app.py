@@ -107,99 +107,85 @@ if not df.empty:
     df["Estimated Cost ($)"] = df.apply(calc_cost, axis=1)
 
 # --- SCENARIO SAVE/LOAD FUNCTIONALITY (Phase 1) ---
-import copy
+# --- SCENARIO SAVE/LOAD FUNCTIONALITY (Phase 2: Export/Import + Stable Load Fix) ---
 
-# Initialize storage for saved scenarios
+import json
+import io
+
+st.markdown("## 💾 Saved Scenarios")
+
+# Ensure the scenarios list exists
 if "saved_scenarios" not in st.session_state:
     st.session_state.saved_scenarios = {}
 
-# --- Helper function to capture all sidebar inputs ---
-def capture_current_state():
-    state_snapshot = {}
-    for key, value in st.session_state.items():
-        if any(prefix in key for prefix in ["hours_", "GRESB_", "SAS New_", "SAS Exp_", "SAS Consl_", "ESGDS_", "cost_", "rate_", "share_"]):
-            state_snapshot[key] = copy.deepcopy(value)
-    return state_snapshot
-
-# --- Save Scenario Section ---
-# --- SCENARIO SAVE/LOAD FUNCTIONALITY (Phase 1.5 – FIXED + CONNECTED) ---
-import copy
-
-# Initialize storage for saved scenarios
-if "saved_scenarios" not in st.session_state:
-    st.session_state.saved_scenarios = {}
-
-# --- Helper to capture all sidebar inputs ---
-def capture_current_state():
-    state_snapshot = {}
-    for key, value in st.session_state.items():
-        if any(prefix in key for prefix in [
-            "hours_", "GRESB_", "SAS New_", "SAS Exp_", "SAS Consl_", "ESGDS_",
-            "cost_", "rate_", "share_"
-        ]):
-            state_snapshot[key] = copy.deepcopy(value)
-    return state_snapshot
-
-
-st.markdown("## 💾 Scenario Manager")
-
-# --- SAVE SCENARIO ---
-with st.expander("💾 Save Current Scenario"):
-    scenario_name = st.text_input("Enter a scenario name:")
-
+# --- Save Scenario ---
+with st.expander("💾 Save New Scenario"):
+    scenario_name = st.text_input("Scenario Name", key="save_name_input")
     if st.button("Save Scenario"):
-        if scenario_name.strip() == "":
-            st.warning("Please enter a valid scenario name before saving.")
+        if 'df' not in locals() or df.empty:
+            st.warning("⚠️ Please run the model first before saving a scenario.")
+        elif not scenario_name.strip():
+            st.warning("⚠️ Please provide a valid scenario name.")
         else:
-            # ✅ Use stored DataFrame from session_state
-            if "model_df" in st.session_state and not st.session_state["model_df"].empty:
-                df = st.session_state["model_df"]
-
-                saved_data = {
-                    "inputs": capture_current_state(),
-                    "results": df.to_dict(),
-                    "summary": {
-                        "total_cost": float(df["Total"].sum()),
-                        "total_hours": float(df["Hours"].sum()),
-                        "total_workstreams": len(df),
-                    },
+            scenario_data = {
+                "inputs": {k: v for k, v in st.session_state.items() if isinstance(v, (int, float, str, list, dict))},
+                "dataframe": df.to_dict(),
+                "actor_totals": actor_totals,
+                "summary": {
+                    "total_workstreams": len(df),
+                    "total_hours": df["Hours"].sum(),
+                    "total_cost": df["Total"].sum()
                 }
+            }
+            st.session_state.saved_scenarios[scenario_name] = scenario_data
+            st.success(f"✅ Scenario '{scenario_name}' saved successfully!")
 
-                # Overwrite if scenario already exists
-                st.session_state.saved_scenarios[scenario_name] = saved_data
-                st.success(f"✅ Scenario '{scenario_name}' saved/updated successfully!")
-            else:
-                st.warning("⚠️ Please run the model first before saving a scenario.")
-
-
-# --- VIEW & LOAD SCENARIOS ---
+# --- Export Scenarios (Download as JSON) ---
 if st.session_state.saved_scenarios:
-    st.markdown("### 📁 Saved Scenarios")
+    export_json = json.dumps(st.session_state.saved_scenarios, indent=4)
+    st.download_button(
+        label="⬇️ Download All Scenarios (.json)",
+        data=export_json,
+        file_name="saved_scenarios.json",
+        mime="application/json"
+    )
 
-    for name, data in list(st.session_state.saved_scenarios.items()):
-        with st.expander(f"📊 {name}", expanded=False):
-            st.write(f"**Total Workstreams:** {data['summary']['total_workstreams']}")
-            st.write(f"**Total Hours:** {data['summary']['total_hours']}")
-            st.write(f"**Total Cost:** ${data['summary']['total_cost']:,.2f}")
+# --- Import Scenarios (Upload JSON) ---
+uploaded_file = st.file_uploader("📂 Upload Saved Scenarios (.json)", type=["json"])
+if uploaded_file is not None:
+    try:
+        loaded_data = json.load(uploaded_file)
+        st.session_state.saved_scenarios.update(loaded_data)
+        st.success("✅ Scenarios imported successfully!")
+    except Exception as e:
+        st.error(f"❌ Failed to import scenarios: {e}")
 
-            # Build a dataframe preview safely
-            df_preview = pd.DataFrame(data["results"])
-            st.dataframe(df_preview, use_container_width=True)
+# --- Display Saved Scenarios ---
+if st.session_state.saved_scenarios:
+    for scenario_name, scenario_data in st.session_state.saved_scenarios.items():
+        with st.expander(f"📊 {scenario_name}"):
+            summary = scenario_data.get("summary", {})
+            st.write(f"**Total Workstreams:** {summary.get('total_workstreams', 'N/A')}")
+            st.write(f"**Total Hours:** {summary.get('total_hours', 'N/A')}")
+            st.write(f"**Total Cost:** ${summary.get('total_cost', 'N/A'):,}")
 
-            col1, col2, col3 = st.columns([1, 1, 3])
-            with col1:
-                if st.button(f"🔄 Load", key=f"load_{name}"):
-                    for k, v in data["inputs"].items():
-                        st.session_state[k] = v
-                    st.success(f"✅ Scenario '{name}' loaded successfully! Sidebar updated.")
-                    st.rerun()
+            df_saved = pd.DataFrame(scenario_data.get("dataframe", {}))
+            if not df_saved.empty:
+                st.dataframe(df_saved, use_container_width=True)
 
-            with col2:
-                if st.button(f"🗑️ Delete", key=f"delete_{name}"):
-                    del st.session_state.saved_scenarios[name]
-                    st.warning(f"Scenario '{name}' deleted.")
-                    st.rerun()
-     
+            if st.button(f"🔁 Load '{scenario_name}'"):
+                try:
+                    saved_inputs = scenario_data.get("inputs", {})
+                    # Update only known keys to avoid Streamlit setitem errors
+                    for k, v in saved_inputs.items():
+                        if k in st.session_state:
+                            st.session_state[k] = v
+                    st.success(f"✅ Scenario '{scenario_name}' loaded successfully! Please rerun to see results.")
+                    st.experimental_rerun()
+                except Exception as e:
+                    st.error(f"❌ Error loading scenario: {e}")
+else:
+    st.info("ℹ️ No scenarios saved yet.")
 
 # --- Main Output Section ---
 # --- Main Output Section ---

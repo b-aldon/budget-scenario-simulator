@@ -122,14 +122,14 @@ def capture_current_state():
     return state_snapshot
 
 # --- Save Scenario Section ---
-# --- SCENARIO SAVE/LOAD FUNCTIONALITY (Phase 1 - FIXED) ---
+# --- SCENARIO SAVE/LOAD FUNCTIONALITY (Phase 1.5 – Interactive Manager) ---
 import copy
 
 # Initialize storage for saved scenarios
 if "saved_scenarios" not in st.session_state:
     st.session_state.saved_scenarios = {}
 
-# --- Helper function to capture all sidebar inputs ---
+# --- Helper to capture all sidebar inputs ---
 def capture_current_state():
     state_snapshot = {}
     for key, value in st.session_state.items():
@@ -140,16 +140,16 @@ def capture_current_state():
             state_snapshot[key] = copy.deepcopy(value)
     return state_snapshot
 
-# --- Save Scenario Section ---
-st.markdown("## 💾 Save or Load Scenarios")
 
+st.markdown("## 💾 Scenario Manager")
+
+# --- SAVE SCENARIO ---
 with st.expander("💾 Save Current Scenario"):
     scenario_name = st.text_input("Enter a scenario name:")
     if st.button("Save Scenario"):
         if scenario_name.strip() == "":
             st.warning("Please enter a valid scenario name before saving.")
         else:
-            # Check if df exists and has necessary columns
             if "df" in locals() and "Total" in df.columns and "Hours" in df.columns:
                 saved_data = {
                     "inputs": capture_current_state(),
@@ -161,28 +161,39 @@ with st.expander("💾 Save Current Scenario"):
                     },
                 }
 
+                # Overwrite if scenario exists
                 st.session_state.saved_scenarios[scenario_name] = saved_data
-                st.success(f"✅ Scenario '{scenario_name}' saved successfully!")
+                st.success(f"✅ Scenario '{scenario_name}' saved/updated successfully!")
             else:
                 st.warning("⚠️ Please run the model first before saving a scenario.")
 
-# --- View and Load Saved Scenarios ---
+
+# --- VIEW & LOAD SCENARIOS ---
 if st.session_state.saved_scenarios:
     st.markdown("### 📁 Saved Scenarios")
-    for name, data in st.session_state.saved_scenarios.items():
-        with st.expander(f"📊 {name}"):
+
+    for name, data in list(st.session_state.saved_scenarios.items()):
+        with st.expander(f"📊 {name}", expanded=False):
             st.write(f"**Total Workstreams:** {data['summary']['total_workstreams']}")
             st.write(f"**Total Hours:** {data['summary']['total_hours']}")
             st.write(f"**Total Cost:** ${data['summary']['total_cost']:,.2f}")
 
-            # Safely rebuild dataframe from saved dict
             df_preview = pd.DataFrame(data["results"])
             st.dataframe(df_preview, use_container_width=True)
 
-            if st.button(f"🔄 Load {name}"):
-                for k, v in data["inputs"].items():
-                    st.session_state[k] = v
-                st.success(f"Scenario '{name}' loaded successfully! Refresh inputs to see the effect.")
+            col1, col2, col3 = st.columns([1, 1, 3])
+            with col1:
+                if st.button(f"🔄 Load", key=f"load_{name}"):
+                    for k, v in data["inputs"].items():
+                        st.session_state[k] = v
+                    st.success(f"✅ Scenario '{name}' loaded! Sidebar will reflect saved inputs.")
+                    st.rerun()
+
+            with col2:
+                if st.button(f"🗑️ Delete", key=f"delete_{name}"):
+                    del st.session_state.saved_scenarios[name]
+                    st.warning(f"Scenario '{name}' deleted.")
+                    st.rerun()
 
 
 # --- Main Output Section ---

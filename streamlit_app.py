@@ -1,199 +1,118 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="GRESB Budget Scenario Simulator", layout="wide")
+st.set_page_config(page_title="Validation Budget Simulator", layout="wide")
 
-st.title("💰 GRESB Annual Budget Scenario Simulator")
+# --- Header Section ---
+st.image("GRESB_hor.png", width=250)
+st.title("Validation Budget Simulator")
 
-# ====================================================
-# UPDATED WORKSTREAM STRUCTURE (unique names)
-# ====================================================
+# --- Sidebar ---
+st.sidebar.title("Workstreams, Hours & Team Allocation")
+st.sidebar.markdown("Adjust the total hours and team allocation for each workstream below:")
 
-workstream_structure = {
+# --- Define actors ---
+actors = ["GRESB", "SAS New", "SAS Exp", "SAS Consl", "ESGDS"]
+
+# --- Workstream structure ---
+workstreams = {
     "Jan - March": [
-        "1. Validation Guidance Docs",
-        "2. OAD",
-        "3. Edge cases files",
-        "4. LLM output Refinement"
+        "1. Validation Guidance Docs", "2. OAD", "3. Edge cases files", "4. LLM output Refinement"
     ],
     "Apr - June": [
-        "5. PSC admin",
-        "6. PSC validation (Primary and QC)",
-        "7. PSC notes prep for GRESB calls",
-        "8. PSC call leads",
-        "9. Report generation",
-        "10. Queries on Front"
+        "5. PSC admin", "6. PSC validation (Primary and QC)", "7. PSC notes prep for GRESB calls",
+        "8. PSC call leads", "9. Report generation", "10. Queries on Front"
     ],
     "July - August": [
-        "11. Validation Admin",
-        "12. Primary Decisions",
-        "13. Secondary decisions",
-        "14. QC 10% of accepted",
-        "15. Same Doc ID - CC",
-        "16. YoY - CC",
-        "17. Sensitive managers - CC",
-        "18. Extra QC on LLM decisions",
-        "19. Escalations Set-up"
+        "11. Validation Admin", "12. Primary Decisions", "13. Secondary decisions",
+        "14. QC 10% of accepted", "15. Same Doc ID - CC", "16. YoY - CC",
+        "17. Sensitive managers - CC", "18. Extra QC on LLM decisions", "19. Escalations Set-up"
     ],
     "September": [
-        "20. All validation queries on Front",
-        "21. Re-Validate from AC - Primary",
-        "22. Re-Validate from AC - Secondary",
-        "23. Deem YoY mistake",
-        "24. Deem validation error",
-        "25. Update and maintain trackers",
-        "26. Revert Validation error decisions",
-        "27. Same Docs - CC",
-        "28. Manager level - CC"
+        "20. All validation queries on Front", "21. Re-Validate from AC - Primary",
+        "22. Re-Validate from AC - Secondary", "23. Deem YoY mistake",
+        "24. Deem validation error", "25. Update and maintain trackers",
+        "26. Revert Validation error decisions", "27. Same Docs - CC", "28. Manager level - CC"
     ],
     "October - December": [
-        "29. LLM Output refinement",
-        "30. Compile Outreach cases",
-        "31. Post-Validation tasks"
+        "29. LLM Output refinement", "30. Compile Outreach cases", "31. Post-Validation tasks"
     ]
 }
 
-# ====================================================
-# SIDEBAR: COMBINED INPUTS
-# ====================================================
+# --- Collect user inputs ---
+st.sidebar.markdown("### Workstream Allocation")
 
-st.sidebar.header("⚙️ Configure Model Inputs")
+allocation_data = []
 
-with st.sidebar.expander("🧩 Workstreams, Hours & Team Allocation", expanded=False):
-    st.caption("Define hours and team workload distribution per workstream.")
-    workstream_inputs = {}
+for period, tasks in workstreams.items():
+    with st.sidebar.expander(period, expanded=False):
+        for task in tasks:
+            st.markdown(f"**{task}**")
+            hours = st.number_input(f"Hours", min_value=0, value=0, step=1, key=f"hours_{task}")
 
-    for period, tasks in workstream_structure.items():
-        with st.expander(period, expanded=False):
-            for task in tasks:
-                st.markdown(f"**{task}**")
-                cols = st.columns([2, 1, 1, 1, 0.5])
-                
-                with cols[0]:
-                    hours = st.number_input(
-                        f"Hours for {task}",
-                        min_value=0,
-                        max_value=2000,
-                        value=100,
-                        step=10,
-                        key=f"hrs_{task.replace(' ', '_')}"
-                    )
-                with cols[1]:
-                    gresb = st.number_input(
-                        "GRESB %",
-                        min_value=0,
-                        max_value=100,
-                        value=20,
-                        step=5,
-                        key=f"gresb_{task.replace(' ', '_')}"
-                    )
-                with cols[2]:
-                    sas = st.number_input(
-                        "SAS %",
-                        min_value=0,
-                        max_value=100,
-                        value=50,
-                        step=5,
-                        key=f"sas_{task.replace(' ', '_')}"
-                    )
-                with cols[3]:
-                    esgds = st.number_input(
-                        "ESGDS %",
-                        min_value=0,
-                        max_value=100,
-                        value=30,
-                        step=5,
-                        key=f"esgds_{task.replace(' ', '_')}"
-                    )
+            cols = st.columns(len(actors))
+            percentages = []
+            for i, actor in enumerate(actors):
+                with cols[i]:
+                    pct = st.number_input(f"{actor} %", min_value=0, max_value=100, value=0, step=1, key=f"{actor}_{task}")
+                    percentages.append(pct)
 
-                total = gresb + sas + esgds
-                if total > 100:
-                    st.error(f"⚠️ Total {total}% exceeds 100% for {task}. Reduce one of the shares.")
+            # Validation: Total % must not exceed 100
+            total_pct = sum(percentages)
+            if total_pct > 100:
+                st.warning(f"⚠️ Total allocation exceeds 100% for {task}. Please adjust.")
+            
+            allocation_data.append({
+                "Period": period,
+                "Workstream": task,
+                "Hours": hours,
+                **{actor: pct for actor, pct in zip(actors, percentages)}
+            })
 
-                workstream_inputs[task] = {
-                    "Category": period,
-                    "Hours": hours,
-                    "GRESB": gresb,
-                    "SAS": sas,
-                    "ESGDS": esgds
-                }
+# --- Cost Details Section ---
+st.sidebar.markdown("---")
+st.sidebar.title("Cost Details")
 
-# ====================================================
-# SIDEBAR: COST DETAILS (Grouped)
-# ====================================================
+with st.sidebar.expander("GRESB"):
+    gresb_cost = st.number_input("GRESB Monthly Cost ($)", min_value=0.0, value=1000.0, step=100.0)
 
-st.sidebar.subheader("💵 Cost Details")
+with st.sidebar.expander("SAS"):
+    sas_new = st.number_input("SAS New Reviewer Rate ($/hr)", min_value=0.0, value=25.0, step=1.0)
+    sas_exp = st.number_input("SAS Experienced Reviewer Rate ($/hr)", min_value=0.0, value=40.0, step=1.0)
+    sas_consl = st.number_input("SAS Consulting Rate ($/hr)", min_value=0.0, value=60.0, step=1.0)
 
-with st.sidebar.expander("GRESB (Internal Team)", expanded=False):
-    gresb_monthly_cost = st.number_input("Monthly salary total ($)", 0, 100000, 15000)
+with st.sidebar.expander("ESGDS"):
+    esgds_cost = st.number_input("ESGDS Annual Cost ($)", min_value=0.0, value=15000.0, step=500.0)
 
-with st.sidebar.expander("SAS (Manual Team)", expanded=False):
-    sas_rate_new = st.number_input("New Reviewer Rate ($/hr)", 0, 200, 25)
-    sas_rate_exp = st.number_input("Experienced Reviewer Rate ($/hr)", 0, 200, 40)
-    sas_rate_consult = st.number_input("Consulting Rate ($/hr)", 0, 200, 50)
+# --- Convert inputs to DataFrame ---
+df = pd.DataFrame(allocation_data)
 
-    st.markdown("**Role Mix for SAS (%)**")
-    new_weight = st.slider("New Reviewer %", 0, 100, 40)
-    exp_weight = st.slider("Experienced Reviewer %", 0, 100 - new_weight, 40)
-    consult_weight = 100 - new_weight - exp_weight
+# --- Calculate estimated cost for each row ---
+def calc_cost(row):
+    total_cost = 0
+    total_cost += (row["Hours"] * row["GRESB"] / 100) * (gresb_cost / 160)  # Approx. hourly rate
+    total_cost += (row["Hours"] * row["SAS New"] / 100) * sas_new
+    total_cost += (row["Hours"] * row["SAS Exp"] / 100) * sas_exp
+    total_cost += (row["Hours"] * row["SAS Consl"] / 100) * sas_consl
+    total_cost += (row["Hours"] * row["ESGDS"] / 100) * (esgds_cost / 2000)  # Approx. hourly equivalent
+    return total_cost
 
-    sas_blended_rate = (
-        (new_weight / 100) * sas_rate_new +
-        (exp_weight / 100) * sas_rate_exp +
-        (consult_weight / 100) * sas_rate_consult
-    )
-    st.info(f"Blended SAS Rate: **${sas_blended_rate:.2f}/hr**")
+if not df.empty:
+    df["Estimated Cost ($)"] = df.apply(calc_cost, axis=1)
 
-with st.sidebar.expander("ESGDS (AI Team)", expanded=False):
-    esgds_annual_cost = st.number_input("Yearly flat fee ($)", 0, 500000, 80000)
+# --- Main Output Section ---
+st.subheader("📊 Validation Budget Simulator")
 
-# ====================================================
-# COMPUTATION
-# ====================================================
+if not df.empty:
+    # Clean up table grouping
+    df_display = df.copy()
+    df_display.loc[df_display["Period"].duplicated(), "Period"] = ""
+    st.dataframe(df_display.style.format({"Estimated Cost ($)": "${:,.2f}"}), use_container_width=True)
 
-results = []
-total_hours = sum([v["Hours"] for v in workstream_inputs.values()]) or 1
+    total_budget = df["Estimated Cost ($)"].sum()
+    st.markdown(f"### 💵 Total Estimated Budget: **${total_budget:,.2f}**")
 
-for task, details in workstream_inputs.items():
-    hours = details["Hours"]
-    gresb_share = details["GRESB"]
-    sas_share = details["SAS"]
-    esgds_share = details["ESGDS"]
+else:
+    st.info("Please enter workstream hours and allocation details on the sidebar to view results.")
 
-    # Cost calculations
-    gresb_cost = gresb_monthly_cost * 12 * (gresb_share / 100) * (hours / total_hours)
-    sas_cost = hours * (sas_share / 100) * sas_blended_rate
-    esgds_cost = esgds_annual_cost * (esgds_share / 100) * (hours / total_hours)
-
-    total_cost = gresb_cost + sas_cost + esgds_cost
-
-    results.append({
-        "Category": details["Category"],
-        "Task": task,
-        "Hours": hours,
-        "GRESB %": gresb_share,
-        "SAS %": sas_share,
-        "ESGDS %": esgds_share,
-        "GRESB Cost": gresb_cost,
-        "SAS Cost": sas_cost,
-        "ESGDS Cost": esgds_cost,
-        "Total Cost": total_cost
-    })
-
-df = pd.DataFrame(results)
-
-# ====================================================
-# DISPLAY RESULTS
-# ====================================================
-
-st.header("📊 Results Overview")
-st.dataframe(df.style.format("{:,.0f}", subset=["GRESB Cost", "SAS Cost", "ESGDS Cost", "Total Cost"]))
-
-st.markdown("---")
-summary = df.groupby("Category")[["GRESB Cost", "SAS Cost", "ESGDS Cost", "Total Cost"]].sum()
-summary_total = summary.sum()
-
-st.metric("Total Annual Cost", f"${summary_total['Total Cost']:,.0f}")
-
-st.bar_chart(summary[["GRESB Cost", "SAS Cost", "ESGDS Cost"]])
 

@@ -106,9 +106,7 @@ def calc_cost(row):
 if not df.empty:
     df["Estimated Cost ($)"] = df.apply(calc_cost, axis=1)
 
-# --- SCENARIO SAVE/LOAD FUNCTIONALITY (Phase 1) ---
-# --- SCENARIO SAVE/LOAD FUNCTIONALITY (Phase 2: Export/Import + Stable Load Fix) ---
-
+# --- SCENARIO SAVE/LOAD FUNCTIONALITY (Phase 2) ---
 import json
 import io
 
@@ -121,22 +119,32 @@ if "saved_scenarios" not in st.session_state:
 # --- Save Scenario ---
 with st.expander("💾 Save New Scenario"):
     scenario_name = st.text_input("Scenario Name", key="save_name_input")
+
     if st.button("Save Scenario"):
+        # Defensive checks to ensure required data exists
         if 'df' not in locals() or df.empty:
             st.warning("⚠️ Please run the model first before saving a scenario.")
         elif not scenario_name.strip():
             st.warning("⚠️ Please provide a valid scenario name.")
         else:
+            # Safely get actor_totals if it exists, else assign empty dict
+            try:
+                current_actor_totals = actor_totals
+            except NameError:
+                current_actor_totals = {}
+
             scenario_data = {
                 "inputs": {k: v for k, v in st.session_state.items() if isinstance(v, (int, float, str, list, dict))},
                 "dataframe": df.to_dict(),
-                "actor_totals": actor_totals,
+                "actor_totals": current_actor_totals,
                 "summary": {
-                    "total_workstreams": len(df),
-                    "total_hours": df["Hours"].sum(),
-                    "total_cost": df["Total"].sum()
+                    "total_workstreams": len(df) if 'df' in locals() else 0,
+                    "total_hours": df["Hours"].sum() if 'df' in locals() else 0,
+                    "total_cost": df["Total"].sum() if 'df' in locals() else 0
                 }
             }
+
+            # Save to session
             st.session_state.saved_scenarios[scenario_name] = scenario_data
             st.success(f"✅ Scenario '{scenario_name}' saved successfully!")
 
@@ -176,7 +184,7 @@ if st.session_state.saved_scenarios:
             if st.button(f"🔁 Load '{scenario_name}'"):
                 try:
                     saved_inputs = scenario_data.get("inputs", {})
-                    # Update only known keys to avoid Streamlit setitem errors
+                    # Update only known keys to avoid Streamlit state conflicts
                     for k, v in saved_inputs.items():
                         if k in st.session_state:
                             st.session_state[k] = v
@@ -186,6 +194,7 @@ if st.session_state.saved_scenarios:
                     st.error(f"❌ Error loading scenario: {e}")
 else:
     st.info("ℹ️ No scenarios saved yet.")
+
 
 # --- Main Output Section ---
 # --- Main Output Section ---

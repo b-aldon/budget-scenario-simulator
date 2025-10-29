@@ -111,10 +111,11 @@ if not df.empty:
 st.markdown("## 🧮 Validation Budget Simulator")
 
 # ==========================
-#  I. COST OVERVIEW TABLE
+#  I. COST OVERVIEW TABLE (Nested View)
 # ==========================
 st.markdown("### 📋 Cost Overview")
 
+# --- Compute Costs ---
 results = []
 for period, tasks in workstreams.items():
     for task in tasks:
@@ -152,12 +153,30 @@ for period, tasks in workstreams.items():
 df = pd.DataFrame(results)
 df.index = df.index + 1
 
-# Group inside collapsible cards for each Period
+# --- Create header row manually ---
+st.markdown("""
+<table style="width:100%; border-collapse:collapse;">
+<tr style="background-color:#E0F0E9; font-weight:bold;">
+    <th style="text-align:left; padding:6px;">Period</th>
+    <th style="text-align:left; padding:6px;">Workstream</th>
+    <th style="text-align:right; padding:6px;">Hours</th>
+    <th style="text-align:right; padding:6px;">GRESB</th>
+    <th style="text-align:right; padding:6px;">SAS New</th>
+    <th style="text-align:right; padding:6px;">SAS Exp</th>
+    <th style="text-align:right; padding:6px;">SAS Consl</th>
+    <th style="text-align:right; padding:6px;">ESGDS</th>
+    <th style="text-align:right; padding:6px;">Total</th>
+</tr>
+</table>
+""", unsafe_allow_html=True)
+
+# --- Render each Period as a collapsible row ---
 for period in workstreams.keys():
-    with st.expander(f"📁 {period}", expanded=False):
-        period_df = df[df["Period"] == period][
-            ["Workstream", "Hours", "GRESB", "SAS New", "SAS Exp", "SAS Consl", "ESGDS", "Total"]
-        ]
+    period_df = df[df["Period"] == period][
+        ["Workstream", "Hours", "GRESB", "SAS New", "SAS Exp", "SAS Consl", "ESGDS", "Total"]
+    ]
+    total_period_cost = period_df["Total"].sum()
+    with st.expander(f"📁 {period}  —  Total Cost: ${total_period_cost:,.0f}", expanded=False):
         st.dataframe(
             period_df.style.format({
                 "Hours": "{:.0f}",
@@ -168,8 +187,9 @@ for period in workstreams.keys():
                 "ESGDS": "${:,.0f}",
                 "Total": "${:,.0f}",
             }),
-            use_container_width=True
+            use_container_width=True,
         )
+
 
 # ==========================
 #  II. COST DISTRIBUTION CHARTS

@@ -197,8 +197,10 @@ for period in df["Period"].unique():
 
 st.divider()
 
-# --- Bar Chart Visualization ---
-st.markdown("### 📊 Cost Distribution by Actor")
+# --- Pie Chart Visualization ---
+import altair as alt
+
+st.markdown("### 🥧 Cost Distribution by Actor")
 
 actor_totals = {
     "GRESB": df["GRESB"].sum(),
@@ -213,8 +215,29 @@ chart_df = pd.DataFrame({
     "Total Cost": list(actor_totals.values())
 })
 
-chart_df.set_index("Actor", inplace=True)
-st.bar_chart(chart_df)
+# Define custom colors (as per your scheme)
+color_scale = alt.Scale(
+    domain=["GRESB", "SAS New", "SAS Exp", "SAS Consl", "ESGDS"],
+    range=["#2E8B57", "#A7C7E7", "#4682B4", "#1E3A8A", "#FF69B4"]  # Green, light blue, medium blue, dark blue, pink
+)
+
+# Create the pie chart
+pie_chart = (
+    alt.Chart(chart_df)
+    .mark_arc(outerRadius=120)
+    .encode(
+        theta=alt.Theta(field="Total Cost", type="quantitative"),
+        color=alt.Color(field="Actor", type="nominal", scale=color_scale, legend=alt.Legend(title="Actor")),
+        tooltip=[
+            alt.Tooltip("Actor", title="Team"),
+            alt.Tooltip("Total Cost", title="Total Cost", format="$.2f")
+        ]
+    )
+    .properties(width=500, height=400)
+)
+
+# Display the chart
+st.altair_chart(pie_chart, use_container_width=True)
 
 # --- Aggregated Summary Section ---
 st.markdown("## 🧾 Aggregated Cost Summary")

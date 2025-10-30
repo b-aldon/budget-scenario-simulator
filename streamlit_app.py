@@ -59,6 +59,9 @@ workstreams = {
 # ------------------------------------------------------------
 # --- SIDEBAR: INPUTS ---
 # ------------------------------------------------------------
+# ------------------------------------------------------------
+# --- SIDEBAR: INPUTS (Compact Version) ---
+# ------------------------------------------------------------
 st.sidebar.title("Workstreams, Hours & Team Allocation")
 st.sidebar.markdown("Adjust the total hours and team allocation for each workstream below:")
 
@@ -67,11 +70,22 @@ allocation_data = []
 for period, tasks in workstreams.items():
     with st.sidebar.expander(period, expanded=False):
         for task in tasks:
-            st.markdown(f"**{task}**")
-            hours = st.number_input(
-                f"Hours", min_value=0, value=0, step=1, key=f"hours_{task}"
-            )
 
+            # --- LINE 1: Workstream Title + Hours side-by-side ---
+            row1 = st.columns([2, 1])
+            with row1[0]:
+                st.markdown(f"**{task}**")
+            with row1[1]:
+                hours = st.number_input(
+                    "Hours",
+                    min_value=0,
+                    value=st.session_state.get(f"hours_{task}", 0),
+                    step=1,
+                    key=f"hours_{task}",
+                    label_visibility="collapsed",  # hide label to keep UI clean
+                )
+
+            # --- LINE 2: Actor allocation percentages ---
             cols = st.columns(len(actors))
             percentages = []
             for i, actor in enumerate(actors):
@@ -80,14 +94,14 @@ for period, tasks in workstreams.items():
                         f"{actor} %",
                         min_value=0,
                         max_value=100,
-                        value=0,
+                        value=st.session_state.get(f"{actor}_{task}", 0),
                         step=1,
                         key=f"{actor}_{task}",
                     )
                     percentages.append(pct)
 
-            total_pct = sum(percentages)
-            if total_pct > 100:
+            # Validation for % total
+            if sum(percentages) > 100:
                 st.warning(f"⚠️ Total allocation exceeds 100% for {task}.")
 
             allocation_data.append({

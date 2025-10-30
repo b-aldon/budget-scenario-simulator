@@ -25,7 +25,7 @@ st.set_page_config(page_title="Validation Budget Simulator", layout="wide")
 # ------------------------------------------------------------
 # --- HEADER ---
 # ------------------------------------------------------------
-st.title("📊 Validation Budget Simulator (Phase 2 – Option B)")
+st.title("📊 Validation Budget Simulator")
 
 # ------------------------------------------------------------
 # --- ACTORS & WORKSTREAMS ---

@@ -293,10 +293,6 @@ if not df.empty:
     most_expensive_ws_cost = max_row["Total"]
     st.info(f"💡 **Most Expensive Workstream:** {most_expensive_ws} (${most_expensive_ws_cost:,.2f})")
 
-    # ---- Stat 3: Total cost for '12. Primary Decisions' ----
-    primary_cost = df[df["Workstream"] == "12. Primary Decisions"]["Total"].sum()
-    st.info(f"💡 **Total Cost of '12. Primary Decisions':** ${primary_cost:,.2f}")
-
 else:
     st.info("No data available yet.")
 

@@ -227,21 +227,41 @@ for period in workstreams.keys():
 # ------------------------------------------------------------
 st.markdown("#### 🥧 Cost by Actor")
 actor_totals = {a: df[a].sum() for a in actors}
-pie_df = pd.DataFrame({"Actor":actor_totals.keys(),"Cost":actor_totals.values()})
+pie_df = pd.DataFrame({"Actor": list(actor_totals.keys()), "Cost": list(actor_totals.values())})
 
 pie = alt.Chart(pie_df).mark_arc().encode(
-    theta="Cost", color="Actor",
+    theta="Cost:Q",
+    color=alt.Color("Actor:N", legend=alt.Legend(title="Actor")),
     tooltip=["Actor", alt.Tooltip("Cost", format="$,.0f")]
 )
 st.altair_chart(pie, use_container_width=True)
 
-st.markdown("#### 📅 Cost by Period")
-stack = df.groupby("Period")[actors].sum().reset_index().melt("Period","Actor","Cost")
-stack_chart = alt.Chart(stack).mark_bar().encode(
-    x="Period:N", y="Cost:Q", color="Actor",
-    tooltip=["Period","Actor",alt.Tooltip("Cost",format="$,.0f")]
+st.markdown("#### 📅 Cost by Period (stacked)")
+
+# Group by period and sum actor columns
+period_sum = df.groupby("Period")[actors].sum().reset_index()
+
+# Melt into long format safely
+stack = period_sum.melt(
+    id_vars=["Period"],
+    value_vars=actors,
+    var_name="Actor",
+    value_name="Cost"
 )
+
+# Optional: ensure periods are in your desired chronological order
+period_order = ["Jan - March", "Apr - June", "July - August", "September", "October - December"]
+stack["Period"] = pd.Categorical(stack["Period"], categories=period_order, ordered=True)
+
+stack_chart = alt.Chart(stack).mark_bar().encode(
+    x=alt.X("Period:N", sort=period_order, title="Period"),
+    y=alt.Y("Cost:Q", title="Total Cost ($)"),
+    color=alt.Color("Actor:N", legend=alt.Legend(title="Actor")),
+    tooltip=["Period", "Actor", alt.Tooltip("Cost", format="$,.0f")]
+).properties(height=400)
+
 st.altair_chart(stack_chart, use_container_width=True)
+
 
 # ------------------------------------------------------------
 # --- SUMMARY METRICS ---------------------------------------

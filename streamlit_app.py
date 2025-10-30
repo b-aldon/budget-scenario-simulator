@@ -268,9 +268,35 @@ st.altair_chart(stack_chart, use_container_width=True)
 # ------------------------------------------------------------
 st.markdown("### 🧾 Summary")
 if not df.empty:
-    hours = df["Hours"].sum()
-    total = df["Total"].sum()
-    st.metric("Total Hours", f"{hours:,.0f}")
-    st.metric("Total Cost", f"${total:,.0f}")
+    total_hours = df["Hours"].sum()
+    total_cost = df["Total"].sum()
+
+    total_gresb = df["GRESB"].sum()
+    total_sas = df["SAS New"].sum() + df["SAS Exp"].sum() + df["SAS Consl"].sum()
+    total_esgds = df["ESGDS"].sum()
+
+    # ---- Display Total Hours & Total Cost side-by-side ----
+    colA, colB = st.columns(2)
+    with colA:
+        st.metric("⏱️ Total Hours", f"{total_hours:,.0f}")
+    with colB:
+        st.metric("💵 Total Cost", f"${total_cost:,.2f}")
+
+    st.markdown("---")
+
+    # ---- Stat 1: Total SAS Cost ----
+    st.info(f"💡 **Total SAS Cost:** ${total_sas:,.2f}")
+
+    # ---- Stat 2: Most expensive workstream ----
+    max_row = df.loc[df["Total"].idxmax()]
+    most_expensive_ws = max_row["Workstream"]
+    most_expensive_ws_cost = max_row["Total"]
+    st.info(f"💡 **Most Expensive Workstream:** {most_expensive_ws} (${most_expensive_ws_cost:,.2f})")
+
+    # ---- Stat 3: Total cost for '12. Primary Decisions' ----
+    primary_cost = df[df["Workstream"] == "12. Primary Decisions"]["Total"].sum()
+    st.info(f"💡 **Total Cost of '12. Primary Decisions':** ${primary_cost:,.2f}")
+
 else:
-    st.info("Enter inputs to see summary")
+    st.info("No data available yet.")
+

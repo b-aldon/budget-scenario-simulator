@@ -34,28 +34,45 @@ actors = ["GRESB", "SAS New", "SAS Exp", "SAS Consl", "ESGDS"]
 
 workstreams = {
     "Jan - March": [
-        "1. Validation Guidance Docs", "2. OAD", "3. Edge cases files", "4. LLM output Refinement"
+        "1. Validation Guidance Docs",
+        "2. OAD",
+        "3. Edge cases files",
+        "4. LLM Prompting"
     ],
     "Apr - June": [
-        "5. PSC admin", "6. PSC validation (Primary and QC)", "7. PSC notes prep for GRESB calls",
-        "8. PSC call leads", "9. Report generation", "10. Queries on Front"
+        "5. PSC & Vali admin",
+        "6. PSC stock texts updates",
+        "7. PSC validation (Primary)",
+        "8. PSC validation (Secondary and QC)",
+        "9. PSC notes prep for GRESB calls",
+        "10. PSC call",
+        "11. PSC Report generation",
+        "12. Queries on Front",
+        "13. LLM prompting",
+        "14. SAS recruiting & training"
     ],
     "July - August": [
-        "11. Validation Admin", "12. Primary Decisions", "13. Secondary decisions",
-        "14. QC 10% of accepted", "15. Same Doc ID - CC", "16. YoY - CC",
-        "17. Sensitive managers - CC", "18. Extra QC on LLM decisions", "19. Escalations Set-up"
+        "15. Validation Admin",
+        "16. Primary Decisions",
+        "17. Secondary decisions",
+        "18. Same Doc ID - Consistency check",
+        "19. YoY - Consistency check",
+        "20. Validation Escalations"
     ],
     "September": [
-        "20. All validation queries on Front", "21. Re-Validate from AC - Primary",
-        "22. Re-Validate from AC - Secondary", "23. Deem YoY mistake",
-        "24. Deem validation error", "25. Update and maintain trackers",
-        "26. Revert Validation error decisions", "27. Same Docs - CC", "28. Manager level - CC"
+        "21. All validation queries on Front",
+        "22. Re-Validate from AC - Primary",
+        "23. Re-Validate from AC - Secondary",
+        "24. Free-Desubmissions",
+        "25. Revert Validation error decisions",
+        "26. Post AC Consistency check"
     ],
-    "October - December": [
-        "29. LLM Output refinement", "30. Compile Outreach cases", "31. Post-Validation tasks"
+    "Oct - Dec": [
+        "27. LLM Output refinement",
+        "28. Compile cases for Outreach",
+        "29. Post-Validation tasks"
     ]
 }
-
 # ------------------------------------------------------------
 # --- SIDEBAR INPUTS ----------------------------------------
 # ------------------------------------------------------------

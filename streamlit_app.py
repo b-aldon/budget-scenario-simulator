@@ -227,14 +227,29 @@ if st.session_state.saved_scenarios:
 st.markdown("## 🧮 Simulation Results")
 
 for period in workstreams.keys():
-    block = df[df["Period"]==period]
+    block = df[df["Period"] == period].copy()
     if not block.empty:
+        # Calculate costs
         total_cost = block["Total"].sum()
-        with st.expander(f"{period} — ${total_cost:,.0f}"):
+        sas_cost = block[["SAS New", "SAS Exp", "SAS Consl"]].sum().sum()
+
+        # Drop unnecessary columns
+        if "Period" in block.columns:
+            block = block.drop(columns=["Period"], errors="ignore")
+        # Reset index so the serial number column disappears
+        block.reset_index(drop=True, inplace=True)
+
+        # Expander title shows both totals
+        with st.expander(f"{period} — Total: ${total_cost:,.0f} | SAS Cost: ${sas_cost:,.0f}"):
             st.dataframe(
                 block.style.format({
-                    "Hours":"{:.0f}","GRESB":"${:,.0f}","SAS New":"${:,.0f}",
-                    "SAS Exp":"${:,.0f}","SAS Consl":"${:,.0f}","ESGDS":"${:,.0f}","Total":"${:,.0f}"
+                    "Hours": "{:.0f}",
+                    "GRESB": "${:,.0f}",
+                    "SAS New": "${:,.0f}",
+                    "SAS Exp": "${:,.0f}",
+                    "SAS Consl": "${:,.0f}",
+                    "ESGDS": "${:,.0f}",
+                    "Total": "${:,.0f}"
                 }),
                 use_container_width=True
             )

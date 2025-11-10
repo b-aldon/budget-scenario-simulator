@@ -30,7 +30,8 @@ st.title("📊 Validation Budget Simulator")
 # ------------------------------------------------------------
 # --- WORKSTREAMS & ACTORS ----------------------------------
 # ------------------------------------------------------------
-actors = ["GRESB", "SAS New", "SAS Exp", "SAS Consl", "ESGDS"]
+# Changed: rename GRESB -> GRESB Exp and add GRESB New (new actor)
+actors = ["GRESB Exp", "GRESB New", "SAS New", "SAS Exp", "SAS Consl", "ESGDS"]
 
 workstreams = {
     "Jan - March": [
@@ -73,6 +74,7 @@ workstreams = {
         "29. Post-Validation tasks"
     ]
 }
+
 # ------------------------------------------------------------
 # --- SIDEBAR INPUTS ----------------------------------------
 # ------------------------------------------------------------
@@ -107,27 +109,29 @@ for period, tasks in workstreams.items():
             if sum(pcts) > 100:
                 st.warning(f"⚠️ Allocation >100% for {task}")
 
+            # store the allocation row (keeps keys aligned to actors list)
             allocation_data.append({
                 "Period": period,
                 "Workstream": task,
                 "Hours": hours,
-                **{actor: pct for actor, pct in zip(actors,pcts)}
+                **{actor: pct for actor, pct in zip(actors, pcts)}
             })
 
 # Cost Inputs
 st.sidebar.markdown("---")
 st.sidebar.title("Cost Inputs")
 
-with st.sidebar.expander("GRESB"):
-    gresb_cost = st.number_input("Monthly Cost ($)", value=1000.0, min_value=0.0, step=100.0)
+# Changed: only GRESB New has monthly cost input (GRESB Exp is experienced staff - no monthly cost input here)
+with st.sidebar.expander("GRESB New (monthly)"):
+    gresb_new_cost = st.number_input("GRESB New Monthly Cost ($)", value=1000.0, min_value=0.0, step=100.0)
 
-with st.sidebar.expander("SAS"):
+with st.sidebar.expander("SAS (hourly rates)"):
     sas_new = st.number_input("New Reviewer ($/hr)", value=25.0)
     sas_exp = st.number_input("Experienced ($/hr)", value=40.0)
     sas_consl = st.number_input("Consultant ($/hr)", value=60.0)
 
-with st.sidebar.expander("ESGDS"):
-    esgds_cost = st.number_input("Annual Cost ($)", value=15000.0, min_value=0.0, step=500.0)
+with st.sidebar.expander("ESGDS (annual)"):
+    esgds_cost = st.number_input("ESGDS Annual Cost ($)", value=15000.0, min_value=0.0, step=500.0)
 
 # ------------------------------------------------------------
 # --- CALCULATIONS ------------------------------------------
@@ -136,21 +140,38 @@ results = []
 for period, tasks in workstreams.items():
     for task in tasks:
         h = st.session_state.get(f"hours_{task}", 0)
+        # get percentages for the six actors (keys will match actors list)
         w = {actor: st.session_state.get(f"{actor}_{task}", 0) for actor in actors}
 
-        gresb_val = (h * w["GRESB"]/100) * (gresb_cost/160)
-        sas_new_val = (h * w["SAS New"]/100) * sas_new
-        sas_exp_val = (h * w["SAS Exp"]/100) * sas_exp
-        sas_consl_val = (h * w["SAS Consl"]/100) * sas_consl
-        esgds_val = (h * w["ESGDS"]/100) * (esgds_cost/2000)
+        # --- COST calculations ---
+        # GRESB New (monthly cost) -> convert to an hourly proxy by dividing monthly by 160
+        gresb_new_val = (h * w.get("GRESB New", 0) / 100) * (gresb_new_cost / 160)
 
-        total = gresb_val + sas_new_val + sas_exp_val + sas_consl_val + esgds_val
+        # GRESB Exp -> no direct cost (we will treat this actor as exp staff hours only)
+        gresb_exp_val = 0.0
+
+        # SAS costs (hourly)
+        sas_new_val = (h * w.get("SAS New", 0) / 100) * sas_new
+        sas_exp_val = (h * w.get("SAS Exp", 0) / 100) * sas_exp
+        sas_consl_val = (h * w.get("SAS Consl", 0) / 100) * sas_consl
+
+        # ESGDS (annual) -> approximate hourly equivalent by annual/2000
+        esgds_val = (h * w.get("ESGDS", 0) / 100) * (esgds_cost / 2000)
+
+        # Total cost sums only the cost columns (GRESB Exp has 0 cost)
+        total = gresb_new_val + gresb_exp_val + sas_new_val + sas_exp_val + sas_consl_val + esgds_val
 
         results.append({
-            "Period": period, "Workstream": task, "Hours": h,
-            "GRESB": gresb_val, "SAS New": sas_new_val,
-            "SAS Exp": sas_exp_val, "SAS Consl": sas_consl_val,
-            "ESGDS": esgds_val, "Total": total
+            "Period": period,
+            "Workstream": task,
+            "Hours": h,
+            "GRESB Exp": gresb_exp_val,   # kept as cost=0 here; hours displayed later separately
+            "GRESB New": gresb_new_val,
+            "SAS New": sas_new_val,
+            "SAS Exp": sas_exp_val,
+            "SAS Consl": sas_consl_val,
+            "ESGDS": esgds_val,
+            "Total": total
         })
 
 df = pd.DataFrame(results)

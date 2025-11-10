@@ -229,22 +229,34 @@ st.markdown("## 🧮 Simulation Results")
 for period in workstreams.keys():
     block = df[df["Period"] == period].copy()
     if not block.empty:
-        # Calculate costs
+        # --- Calculations ---
         total_cost = block["Total"].sum()
         sas_cost = block[["SAS New", "SAS Exp", "SAS Consl"]].sum().sum()
 
-        # Drop unnecessary columns
-        if "Period" in block.columns:
-            block = block.drop(columns=["Period"], errors="ignore")
-        # Reset index so the serial number column disappears
+        # GRESB hours = directly take from 'Hours' column proportion
+        # If your logic has separate GRESB hours, adjust here.
+        gresb_hours = block["GRESB"].sum() if "GRESB" in block.columns else 0
+
+        # --- Drop unwanted columns ---
+        block = block.drop(columns=["Period"], errors="ignore")
         block.reset_index(drop=True, inplace=True)
 
-        # Expander title shows both totals
-        with st.expander(f"{period} — Total: ${total_cost:,.0f} | SAS Cost: ${sas_cost:,.0f}"):
+        # --- Replace GRESB cost column with hours ---
+        # Ensure GRESB displays as integer hours, not $ format
+        block["GRESB"] = block["GRESB"].astype(float).astype(int)
+
+        # --- Expander title ---
+        expander_title = (
+            f"{period} — Total Cost: ${total_cost:,.0f} | "
+            f"SAS Cost: ${sas_cost:,.0f} | "
+            f"GRESB Hours: {gresb_hours:,}"
+        )
+
+        with st.expander(expander_title):
             st.dataframe(
                 block.style.format({
                     "Hours": "{:.0f}",
-                    "GRESB": "${:,.0f}",
+                    "GRESB": "{:.0f}",  # Show GRESB as hours
                     "SAS New": "${:,.0f}",
                     "SAS Exp": "${:,.0f}",
                     "SAS Consl": "${:,.0f}",

@@ -227,44 +227,69 @@ if st.session_state.saved_scenarios:
 st.markdown("## 🧮 Simulation Results")
 
 for period in workstreams.keys():
+    # select rows for this period
     block = df[df["Period"] == period].copy()
-    if not block.empty:
-        # --- Calculations ---
-        total_cost = block["Total"].sum()
-        sas_cost = block[["SAS New", "SAS Exp", "SAS Consl"]].sum().sum()
+    if block.empty:
+        continue
 
-        # GRESB hours = directly take from 'Hours' column proportion
-        # If your logic has separate GRESB hours, adjust here.
-        gresb_hours = block["GRESB"].sum() if "GRESB" in block.columns else 0
+    # --- Recompute per-row GRESB hours from the sidebar allocation keys ---
+    # Expect sidebar keys like "GRESB_1. Validation Guidance Docs"
+    def compute_gresb_hours(row):
+        task = row["Workstream"]
+        pct = st.session_state.get(f"GRESB_{task}", 0)  # percent allocated to GRESB
+        try:
+            hrs = float(row.get("Hours", 0))
+        except Exception:
+            hrs = 0.0
+        return hrs * (pct / 100.0)
 
-        # --- Drop unwanted columns ---
-        block = block.drop(columns=["Period"], errors="ignore")
-        block.reset_index(drop=True, inplace=True)
+    block["GRESB_Hours"] = block.apply(compute_gresb_hours, axis=1)
 
-        # --- Replace GRESB cost column with hours ---
-        # Ensure GRESB displays as integer hours, not $ format
-        block["GRESB"] = block["GRESB"].astype(float).astype(int)
+    # --- SAS cost per row is already present in the df (SAS New/Exp/Consl) ---
+    # total cost and sas cost for the period:
+    total_cost = block["Total"].sum()
+    sas_cost = block[["SAS New", "SAS Exp", "SAS Consl"]].sum().sum()
 
-        # --- Expander title ---
-        expander_title = (
-            f"{period} — Total Cost: ${total_cost:,.0f} | "
-            f"SAS Cost: ${sas_cost:,.0f} | "
-            f"GRESB Hours: {gresb_hours:,}"
+    # total GRESB hours for the period:
+    total_gresb_hours = block["GRESB_Hours"].sum()
+
+    # --- Prepare display table: replace 'GRESB' cost column with hours column ---
+    display_block = block.copy()
+    # remove Period column and index
+    display_block = display_block.drop(columns=["Period"], errors="ignore").reset_index(drop=True)
+
+    # Remove the old GRESB cost column if present and insert the hours column in its place
+    if "GRESB" in display_block.columns:
+        display_block = display_block.drop(columns=["GRESB"], errors="ignore")
+    # place GRESB_Hours next to Hours column
+    cols = ["Workstream", "Hours", "GRESB_Hours", "SAS New", "SAS Exp", "SAS Consl", "ESGDS", "Total"]
+    # keep only existing columns in that order
+    display_cols = [c for c in cols if c in display_block.columns]
+    display_block = display_block[display_cols]
+
+    # rename column for clarity
+    display_block = display_block.rename(columns={"GRESB_Hours": "GRESB (hrs)"})
+
+    # --- Expander header with totals ---
+    header = (
+        f"{period} — Total Cost: ${total_cost:,.0f} | "
+        f"SAS Cost: ${sas_cost:,.0f} | "
+        f"GRESB Hours: {total_gresb_hours:,.0f}"
+    )
+
+    with st.expander(header, expanded=False):
+        st.dataframe(
+            display_block.style.format({
+                "Hours": "{:.0f}",
+                "GRESB (hrs)": "{:.0f}",            # hours formatting
+                "SAS New": "${:,.0f}",
+                "SAS Exp": "${:,.0f}",
+                "SAS Consl": "${:,.0f}",
+                "ESGDS": "${:,.0f}",
+                "Total": "${:,.0f}"
+            }),
+            use_container_width=True
         )
-
-        with st.expander(expander_title):
-            st.dataframe(
-                block.style.format({
-                    "Hours": "{:.0f}",
-                    "GRESB": "{:.0f}",  # Show GRESB as hours
-                    "SAS New": "${:,.0f}",
-                    "SAS Exp": "${:,.0f}",
-                    "SAS Consl": "${:,.0f}",
-                    "ESGDS": "${:,.0f}",
-                    "Total": "${:,.0f}"
-                }),
-                use_container_width=True
-            )
 
 # ------------------------------------------------------------
 # --- CHARTS -------------------------------------------------

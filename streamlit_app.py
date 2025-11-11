@@ -358,37 +358,77 @@ stack_chart = alt.Chart(stack).mark_bar().encode(
 
 st.altair_chart(stack_chart, use_container_width=True)
 
-
 # ------------------------------------------------------------
 # --- SUMMARY METRICS ---------------------------------------
 # ------------------------------------------------------------
 st.markdown("### 🧾 Summary")
 if not df.empty:
+    # ---- Basic Totals ----
     total_hours = df["Hours"].sum()
-    total_cost = df["Total"].sum()
+    total_cost = df["SAS New"].sum() + df["SAS Exp"].sum() + df["SAS Con"].sum() + df["ESGDS"].sum()
 
-    total_gresb = df["GRESB"].sum()
-    total_sas = df["SAS New"].sum() + df["SAS Exp"].sum() + df["SAS Consl"].sum()
-    total_esgds = df["ESGDS"].sum()
+    # ---- GRESB N Hours & FTE Calculation ----
+    # Recompute total hours spent by GRESB N
+    gresb_n_total_hours = 0
+    for period, tasks in workstreams.items():
+        for task in tasks:
+            hrs = st.session_state.get(f"hours_{task}", 0)
+            pct = st.session_state.get(f"GRESB N_{task}", 0)
+            gresb_n_total_hours += hrs * (pct / 100.0)
 
-    # ---- Display Total Hours & Total Cost side-by-side ----
+    gresb_n_ftes = gresb_n_total_hours / (40 * 15)  # 15 weeks, 40 hrs/week
+
+    # ---- SAS Costs ----
+    total_sas_cost = df["SAS New"].sum() + df["SAS Exp"].sum() + df["SAS Con"].sum()
+    sas_new_cost = df["SAS New"].sum()
+    sas_exp_cost = df["SAS Exp"].sum()
+    sas_con_cost = df["SAS Con"].sum()
+
+    # ---- Display Metrics ----
     colA, colB = st.columns(2)
     with colA:
         st.metric("⏱️ Total Hours", f"{total_hours:,.0f}")
+        subcolA1, subcolA2 = st.columns(2)
+        with subcolA1:
+            st.metric("🧍‍♂️ GRESB N Hours", f"{gresb_n_total_hours:,.0f}")
+        with subcolA2:
+            st.metric("👥 Equivalent FTEs", f"{gresb_n_ftes:,.2f}")
+
     with colB:
-        st.metric("💵 Total Cost", f"${total_cost:,.2f}")
+        st.metric("💵 Total Cost", f"${total_cost:,.0f}")
+        subcolB1, subcolB2 = st.columns(2)
+        with subcolB1:
+            st.metric("💡 SAS Total", f"${total_sas_cost:,.0f}")
+        with subcolB2:
+            st.write(
+                f"**SAS Breakdown**  \n"
+                f"New: ${sas_new_cost:,.0f}  \n"
+                f"Exp: ${sas_exp_cost:,.0f}  \n"
+                f"Con: ${sas_con_cost:,.0f}"
+            )
 
     st.markdown("---")
 
-    # ---- Stat 1: Total SAS Cost ----
-    st.info(f"💡 **Total SAS Cost:** ${total_sas:,.2f}")
-
-    # ---- Stat 2: Most expensive workstream ----
+    # ---- Stat 1: Most Expensive Workstream ----
     max_row = df.loc[df["Total"].idxmax()]
     most_expensive_ws = max_row["Workstream"]
     most_expensive_ws_cost = max_row["Total"]
-    st.info(f"💡 **Most Expensive Workstream:** {most_expensive_ws} (${most_expensive_ws_cost:,.2f})")
+    st.info(f"💡 **Most Expensive Workstream:** {most_expensive_ws} (${most_expensive_ws_cost:,.0f})")
+
+    # ---- Stat 2: Total PSC Cost ----
+    psc_tasks = [
+        "5. PSC & Vali admin",
+        "6. PSC stock texts updates",
+        "7. PSC validation (Primary)",
+        "8. PSC validation (Secondary and QC)",
+        "9. PSC notes prep for GRESB calls",
+        "10. PSC call",
+        "11. PSC Report generation"
+    ]
+    psc_cost = df[df["Workstream"].isin(psc_tasks)]["Total"].sum()
+    st.info(f"💡 **Total PSC Cost:** ${psc_cost:,.0f}")
 
 else:
     st.info("No data available yet.")
+
 

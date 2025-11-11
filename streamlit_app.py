@@ -367,7 +367,7 @@ if not df.empty:
     # --- Basic totals ---
     total_hours = df["Hours"].sum()
 
-    # ✅ Total cost includes all cost actors
+    # Total cost should include all cost columns (if present)
     total_cost = (
         df.get("GRESB", 0).sum() +
         df.get("GRESB N", 0).sum() +
@@ -377,72 +377,77 @@ if not df.empty:
         df.get("ESGDS", 0).sum()
     )
 
-    # --- GRESB Experienced Hours ---
-    total_gresb_exp_hours = 0
-    if "GRESB" in df.columns:
-        for task in df["Workstream"]:
-            hrs = st.session_state.get(f"hours_{task}", 0)
-            pct = st.session_state.get(f"GRESB_{task}", 0)
-            total_gresb_exp_hours += hrs * (pct / 100.0)
+    # --- GRESB Exp total hours (experienced staff hours only) ---
+    total_gresb_exp_hours = 0.0
+    for task in df["Workstream"]:
+        hrs = st.session_state.get(f"hours_{task}", 0)
+        pct_exp = st.session_state.get(f"GRESB_{task}", 0)
+        total_gresb_exp_hours += hrs * (pct_exp / 100.0)
 
-    # --- GRESB New Hours and FTEs ---
-    total_gresbN_hours = 0
-    if "GRESB N" in df.columns:
-        for task in df["Workstream"]:
-            hrs = st.session_state.get(f"hours_{task}", 0)
-            pct = st.session_state.get(f"GRESB N_{task}", 0)
-            total_gresbN_hours += hrs * (pct / 100.0)
-    gresbN_fte = total_gresbN_hours / (40 * 15)  # 40 hrs/week * 15 weeks
+    # --- GRESB N total hours & FTEs (new hires / interns) ---
+    total_gresbN_hours = 0.0
+    for task in df["Workstream"]:
+        hrs = st.session_state.get(f"hours_{task}", 0)
+        pct_new = st.session_state.get(f"GRESB N_{task}", 0)
+        total_gresbN_hours += hrs * (pct_new / 100.0)
 
-    # --- SAS cost breakdown ---
-    total_sas = (
-        df.get("SAS New", 0).sum() +
-        df.get("SAS Exp", 0).sum() +
-        df.get("SAS Con", 0).sum()
-    )
+    # FTE formula: 40 hrs/week * 15 weeks
+    gresbN_fte = total_gresbN_hours / (40 * 15) if (40 * 15) != 0 else 0.0
 
+    # --- SAS costs breakdown ---
+    total_sas = df.get("SAS New", 0).sum() + df.get("SAS Exp", 0).sum() + df.get("SAS Con", 0).sum()
     sas_new_cost = df.get("SAS New", 0).sum()
     sas_exp_cost = df.get("SAS Exp", 0).sum()
     sas_con_cost = df.get("SAS Con", 0).sum()
 
-  # ---- Display Total Hours & Total Cost side-by-side ----
-colA, colB = st.columns(2)
+    # ---- Layout: two columns ----
+    left_col, right_col = st.columns(2)
 
-# --- LEFT SIDE: Hours section ---
-with colA:
-    st.metric("⏱️ Total Hours", f"{total_hours:,.0f}")
-    st.markdown(
-        f"""
-        <div style='font-size:15px; line-height:1.6;'>
-            <b>GRESB Exp Hours:</b> {total_gresb_exp_hours:,.0f}<br>
-            <b>GRESB N Hours:</b> {total_gresbN_hours:,.0f} &nbsp;&nbsp;|&nbsp;&nbsp; <b>FTEs:</b> {gresbN_fte:.2f}
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    # LEFT: Hours metrics
+    with left_col:
+        st.metric("⏱️ Total Hours", f"{total_hours:,.0f}")
 
-# --- RIGHT SIDE: Cost section ---
-with colB:
-    st.metric("💵 Total Cost", f"${total_cost:,.2f}")
-    st.markdown(
-        f"""
-        <div style='font-size:15px; line-height:1.6;'>
-            <b>Total SAS Cost:</b> ${total_sas:,.2f}<br>
-            <b>SAS New:</b> ${sas_new_cost:,.2f} &nbsp;&nbsp;|&nbsp;&nbsp; 
-            <b>SAS Exp:</b> ${sas_exp_cost:,.2f} &nbsp;&nbsp;|&nbsp;&nbsp; 
-            <b>SAS Con:</b> ${sas_con_cost:,.2f}
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+        # Use a small HTML block to keep consistent font and alignment
+        st.markdown(
+            f"""
+            <div style="font-size:14px; line-height:1.5;">
+              <strong>GRESB Exp Hours:</strong> {total_gresb_exp_hours:,.0f}<br>
+              <strong>GRESB N Hours:</strong> {total_gresbN_hours:,.0f} &nbsp;&nbsp;|&nbsp;&nbsp;
+              <strong>FTEs:</strong> {gresbN_fte:.2f}
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    # RIGHT: Cost metrics
+    with right_col:
+        st.metric("💵 Total Cost", f"${total_cost:,.2f}")
+
+        st.markdown(
+            f"""
+            <div style="font-size:14px; line-height:1.5;">
+              <strong>Total SAS Cost:</strong> ${total_sas:,.2f}<br>
+              <strong>SAS New:</strong> ${sas_new_cost:,.2f} &nbsp;&nbsp;|&nbsp;&nbsp;
+              <strong>SAS Exp:</strong> ${sas_exp_cost:,.2f} &nbsp;&nbsp;|&nbsp;&nbsp;
+              <strong>SAS Con:</strong> ${sas_con_cost:,.2f}
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    st.markdown("---")
 
     # ---- Stat 1: Most expensive workstream ----
-    max_row = df.loc[df["Total"].idxmax()]
-    most_expensive_ws = max_row["Workstream"]
-    most_expensive_ws_cost = max_row["Total"]
-    st.info(f"💡 **Most Expensive Workstream:** {most_expensive_ws} (${most_expensive_ws_cost:,.2f})")
+    try:
+        max_idx = df["Total"].idxmax()
+        max_row = df.loc[max_idx]
+        most_expensive_ws = max_row["Workstream"]
+        most_expensive_ws_cost = max_row["Total"]
+        st.info(f"💡 **Most Expensive Workstream:** {most_expensive_ws} — ${most_expensive_ws_cost:,.2f}")
+    except Exception:
+        st.info("💡 **Most Expensive Workstream:** N/A")
 
-    # ---- Stat 2: Total PSC cost ----
+    # ---- Stat 2: Total PSC cost (sum of the PSC-related workstreams) ----
     psc_tasks = [
         "5. PSC & Vali admin",
         "6. PSC stock texts updates",
@@ -454,5 +459,6 @@ with colB:
     ]
     total_psc_cost = df[df["Workstream"].isin(psc_tasks)]["Total"].sum()
     st.info(f"💡 **Total PSC Cost:** ${total_psc_cost:,.2f}")
+
 else:
     st.info("No data available yet.")

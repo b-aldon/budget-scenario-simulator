@@ -405,31 +405,36 @@ if not df.empty:
     sas_exp_cost = df.get("SAS Exp", 0).sum()
     sas_con_cost = df.get("SAS Con", 0).sum()
 
-    # ---- Display Total Hours & Total Cost side-by-side ----
-    colA, colB = st.columns(2)
+  # ---- Display Total Hours & Total Cost side-by-side ----
+colA, colB = st.columns(2)
 
-    # --- LEFT SIDE: Hours section ---
-    with colA:
-        st.metric("⏱️ Total Hours", f"{total_hours:,.0f}")
-        st.markdown(
-            f"""
-            **GRESB Exp Hours:** {total_gresb_exp_hours:,.0f}  
-            **GRESB N Hours:** {total_gresbN_hours:,.0f} | **FTEs:** {gresbN_fte:.2f}
-            """
-        )
+# --- LEFT SIDE: Hours section ---
+with colA:
+    st.metric("⏱️ Total Hours", f"{total_hours:,.0f}")
+    st.markdown(
+        f"""
+        <div style='font-size:15px; line-height:1.6;'>
+            <b>GRESB Exp Hours:</b> {total_gresb_exp_hours:,.0f}<br>
+            <b>GRESB N Hours:</b> {total_gresbN_hours:,.0f} &nbsp;&nbsp;|&nbsp;&nbsp; <b>FTEs:</b> {gresbN_fte:.2f}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
-    # --- RIGHT SIDE: Cost section ---
-    with colB:
-        st.metric("💵 Total Cost", f"${total_cost:,.2f}")
-        st.markdown(
-            f"""
-            **Total SAS Cost:** ${total_sas:,.2f}  
-            &nbsp;&nbsp;↳ **SAS New:** ${sas_new_cost:,.2f} | **SAS Exp:** ${sas_exp_cost:,.2f} | **SAS Con:** ${sas_con_cost:,.2f}
-            """,
-            unsafe_allow_html=True
-        )
-
-    st.markdown("---")
+# --- RIGHT SIDE: Cost section ---
+with colB:
+    st.metric("💵 Total Cost", f"${total_cost:,.2f}")
+    st.markdown(
+        f"""
+        <div style='font-size:15px; line-height:1.6;'>
+            <b>Total SAS Cost:</b> ${total_sas:,.2f}<br>
+            <b>SAS New:</b> ${sas_new_cost:,.2f} &nbsp;&nbsp;|&nbsp;&nbsp; 
+            <b>SAS Exp:</b> ${sas_exp_cost:,.2f} &nbsp;&nbsp;|&nbsp;&nbsp; 
+            <b>SAS Con:</b> ${sas_con_cost:,.2f}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
     # ---- Stat 1: Most expensive workstream ----
     max_row = df.loc[df["Total"].idxmax()]

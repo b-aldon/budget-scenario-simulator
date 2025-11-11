@@ -298,7 +298,7 @@ for period in workstreams.keys():
     header = (
         f"{period} — Total Cost: ${total_cost:,.0f} | "
         f"SAS Cost: ${sas_cost:,.0f} | "
-        f"GRESB Hours: {total_gresb_hours:,.0f}"
+        f"GRESB Total Hours: {total_gresb_hours:,.0f}"
     )
 
     with st.expander(header, expanded=False):

@@ -367,7 +367,7 @@ if not df.empty:
     # --- Basic totals ---
     total_hours = df["Hours"].sum()
 
-    # ✅ Total cost should now include all actors (GRESB, GRESB N, SAS, ESGDS)
+    # ✅ Total cost includes all cost actors
     total_cost = (
         df.get("GRESB", 0).sum() +
         df.get("GRESB N", 0).sum() +
@@ -377,7 +377,15 @@ if not df.empty:
         df.get("ESGDS", 0).sum()
     )
 
-    # --- GRESB New hours and equivalent FTEs ---
+    # --- GRESB Experienced Hours ---
+    total_gresb_exp_hours = 0
+    if "GRESB" in df.columns:
+        for task in df["Workstream"]:
+            hrs = st.session_state.get(f"hours_{task}", 0)
+            pct = st.session_state.get(f"GRESB_{task}", 0)
+            total_gresb_exp_hours += hrs * (pct / 100.0)
+
+    # --- GRESB New Hours and FTEs ---
     total_gresbN_hours = 0
     if "GRESB N" in df.columns:
         for task in df["Workstream"]:
@@ -400,15 +408,26 @@ if not df.empty:
     # ---- Display Total Hours & Total Cost side-by-side ----
     colA, colB = st.columns(2)
 
+    # --- LEFT SIDE: Hours section ---
     with colA:
         st.metric("⏱️ Total Hours", f"{total_hours:,.0f}")
-        st.write(f"**GRESB N Hours:** {total_gresbN_hours:,.0f}")
-        st.write(f"**Equivalent FTEs:** {gresbN_fte:.2f}")
+        st.markdown(
+            f"""
+            **GRESB Exp Hours:** {total_gresb_exp_hours:,.0f}  
+            **GRESB N Hours:** {total_gresbN_hours:,.0f} | **FTEs:** {gresbN_fte:.2f}
+            """
+        )
 
+    # --- RIGHT SIDE: Cost section ---
     with colB:
         st.metric("💵 Total Cost", f"${total_cost:,.2f}")
-        st.write(f"**Total SAS Cost:** ${total_sas:,.2f}")
-        st.write(f"↳ SAS New: ${sas_new_cost:,.2f} | SAS Exp: ${sas_exp_cost:,.2f} | SAS Con: ${sas_con_cost:,.2f}")
+        st.markdown(
+            f"""
+            **Total SAS Cost:** ${total_sas:,.2f}  
+            &nbsp;&nbsp;↳ **SAS New:** ${sas_new_cost:,.2f} | **SAS Exp:** ${sas_exp_cost:,.2f} | **SAS Con:** ${sas_con_cost:,.2f}
+            """,
+            unsafe_allow_html=True
+        )
 
     st.markdown("---")
 
@@ -433,6 +452,3 @@ if not df.empty:
 
 else:
     st.info("No data available yet.")
-
-
-

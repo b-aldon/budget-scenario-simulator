@@ -252,43 +252,47 @@ for period in workstreams.keys():
     if block.empty:
         continue
 
-    # --- Recompute per-row GRESB hours from the sidebar allocation keys ---
-    # Expect sidebar keys like "GRESB_1. Validation Guidance Docs"
-    def compute_gresb_hours(row):
+    # --- Recompute per-row GRESB & GRESB N hours from the sidebar allocation keys ---
+    def compute_gresb_hours(row, actor_name):
         task = row["Workstream"]
-        pct = st.session_state.get(f"GRESB_{task}", 0)  # percent allocated to GRESB
+        pct = st.session_state.get(f"{actor_name}_{task}", 0)
         try:
             hrs = float(row.get("Hours", 0))
         except Exception:
             hrs = 0.0
         return hrs * (pct / 100.0)
 
-    block["GRESB_Hours"] = block.apply(compute_gresb_hours, axis=1)
+    block["GRESB_Hours"] = block.apply(lambda r: compute_gresb_hours(r, "GRESB"), axis=1)
+    block["GRESB_N_Hours"] = block.apply(lambda r: compute_gresb_hours(r, "GRESB N"), axis=1)
 
-    # --- SAS cost per row is already present in the df (SAS New/Exp/Consl) ---
-    # total cost and sas cost for the period:
+    # --- SAS cost per row already present in df ---
     total_cost = block["Total"].sum()
-    sas_cost = block[["SAS New", "SAS Exp", "SAS Consl"]].sum().sum()
+    sas_cost = block[["SAS New", "SAS Exp", "SAS Con"]].sum().sum()
 
     # total GRESB hours for the period:
-    total_gresb_hours = block["GRESB_Hours"].sum()
+    total_gresb_hours = block["GRESB_Hours"].sum() + block["GRESB_N_Hours"].sum()
 
-    # --- Prepare display table: replace 'GRESB' cost column with hours column ---
+    # --- Prepare display table: include both GRESB hour columns and SAS/ESGDS costs ---
     display_block = block.copy()
-    # remove Period column and index
     display_block = display_block.drop(columns=["Period"], errors="ignore").reset_index(drop=True)
 
-    # Remove the old GRESB cost column if present and insert the hours column in its place
-    if "GRESB" in display_block.columns:
-        display_block = display_block.drop(columns=["GRESB"], errors="ignore")
-    # place GRESB_Hours next to Hours column
-    cols = ["Workstream", "Hours", "GRESB_Hours", "SAS New", "SAS Exp", "SAS Consl", "ESGDS", "Total"]
-    # keep only existing columns in that order
+    # remove GRESB cost columns if they exist
+    display_block = display_block.drop(columns=["GRESB", "GRESB N"], errors="ignore")
+
+    # define column order for display
+    cols = [
+        "Workstream", "Hours",
+        "GRESB_Hours", "GRESB_N_Hours",
+        "SAS New", "SAS Exp", "SAS Con",
+        "ESGDS", "Total"
+    ]
     display_cols = [c for c in cols if c in display_block.columns]
     display_block = display_block[display_cols]
 
-    # rename column for clarity
-    display_block = display_block.rename(columns={"GRESB_Hours": "GRESB (hrs)"})
+    display_block = display_block.rename(columns={
+        "GRESB_Hours": "GRESB (hrs)",
+        "GRESB_N_Hours": "GRESB N (hrs)"
+    })
 
     # --- Expander header with totals ---
     header = (
@@ -301,10 +305,11 @@ for period in workstreams.keys():
         st.dataframe(
             display_block.style.format({
                 "Hours": "{:.0f}",
-                "GRESB (hrs)": "{:.0f}",            # hours formatting
+                "GRESB (hrs)": "{:.0f}",
+                "GRESB N (hrs)": "{:.0f}",
                 "SAS New": "${:,.0f}",
                 "SAS Exp": "${:,.0f}",
-                "SAS Consl": "${:,.0f}",
+                "SAS Con": "${:,.0f}",
                 "ESGDS": "${:,.0f}",
                 "Total": "${:,.0f}"
             }),
@@ -315,7 +320,8 @@ for period in workstreams.keys():
 # --- CHARTS -------------------------------------------------
 # ------------------------------------------------------------
 st.markdown("#### 🥧 Cost by Actor")
-actor_totals = {a: df[a].sum() for a in actors}
+
+actor_totals = {a: df[a].sum() for a in ["GRESB", "GRESB N", "SAS New", "SAS Exp", "SAS Con", "ESGDS"]}
 pie_df = pd.DataFrame({"Actor": list(actor_totals.keys()), "Cost": list(actor_totals.values())})
 
 pie = alt.Chart(pie_df).mark_arc().encode(
@@ -328,18 +334,19 @@ st.altair_chart(pie, use_container_width=True)
 st.markdown("#### 📅 Cost by Period (stacked)")
 
 # Group by period and sum actor columns
-period_sum = df.groupby("Period")[actors].sum().reset_index()
+actors_for_charts = ["GRESB", "GRESB N", "SAS New", "SAS Exp", "SAS Con", "ESGDS"]
+period_sum = df.groupby("Period")[actors_for_charts].sum().reset_index()
 
 # Melt into long format safely
 stack = period_sum.melt(
     id_vars=["Period"],
-    value_vars=actors,
+    value_vars=actors_for_charts,
     var_name="Actor",
     value_name="Cost"
 )
 
 # Optional: ensure periods are in your desired chronological order
-period_order = ["Jan - March", "Apr - June", "July - August", "September", "October - December"]
+period_order = ["Jan - March", "Apr - June", "July - August", "September", "Oct - Dec"]
 stack["Period"] = pd.Categorical(stack["Period"], categories=period_order, ordered=True)
 
 stack_chart = alt.Chart(stack).mark_bar().encode(

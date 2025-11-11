@@ -30,8 +30,8 @@ st.title("📊 Validation Budget Simulator")
 # ------------------------------------------------------------
 # --- WORKSTREAMS & ACTORS ----------------------------------
 # ------------------------------------------------------------
-# Changed: rename GRESB -> GRESB Exp and add GRESB New (new actor)
-actors = ["GRESB Exp", "GRESB New", "SAS New", "SAS Exp", "SAS Consl", "ESGDS"]
+# Simplified/renamed actors for better alignment
+actors = ["GRESB", "GRESB N", "SAS New", "SAS Exp", "SAS Con", "ESGDS"]
 
 workstreams = {
     "Jan - March": [
@@ -86,8 +86,9 @@ allocation_data = []
 for period, tasks in workstreams.items():
     with st.sidebar.expander(period):
         for task in tasks:
-            row1 = st.columns([2,1])
-            with row1[0]: st.markdown(f"**{task}**")
+            row1 = st.columns([2, 1])
+            with row1[0]:
+                st.markdown(f"**{task}**")
             with row1[1]:
                 hours = st.number_input(
                     "Hours", min_value=0, step=1,
@@ -109,7 +110,6 @@ for period, tasks in workstreams.items():
             if sum(pcts) > 100:
                 st.warning(f"⚠️ Allocation >100% for {task}")
 
-            # store the allocation row (keeps keys aligned to actors list)
             allocation_data.append({
                 "Period": period,
                 "Workstream": task,
@@ -117,21 +117,29 @@ for period, tasks in workstreams.items():
                 **{actor: pct for actor, pct in zip(actors, pcts)}
             })
 
-# Cost Inputs
+# ------------------------------------------------------------
+# --- COST INPUTS --------------------------------------------
+# ------------------------------------------------------------
 st.sidebar.markdown("---")
 st.sidebar.title("Cost Inputs")
 
-# Changed: only GRESB New has monthly cost input (GRESB Exp is experienced staff - no monthly cost input here)
-with st.sidebar.expander("GRESB New (monthly)"):
-    gresb_new_cost = st.number_input("GRESB New Monthly Cost ($)", value=1000.0, min_value=0.0, step=100.0)
+# GRESB N (New) — Monthly rate
+with st.sidebar.expander("GRESB N (monthly)"):
+    gresb_new_cost = st.number_input(
+        "GRESB N Monthly Cost ($)", value=1000.0, min_value=0.0, step=100.0
+    )
 
+# SAS team — hourly rates
 with st.sidebar.expander("SAS (hourly rates)"):
-    sas_new = st.number_input("New Reviewer ($/hr)", value=25.0)
-    sas_exp = st.number_input("Experienced ($/hr)", value=40.0)
-    sas_consl = st.number_input("Consultant ($/hr)", value=60.0)
+    sas_new = st.number_input("SAS New ($/hr)", value=25.0)
+    sas_exp = st.number_input("SAS Exp ($/hr)", value=40.0)
+    sas_con = st.number_input("SAS Con ($/hr)", value=60.0)
 
+# ESGDS — annual rate
 with st.sidebar.expander("ESGDS (annual)"):
-    esgds_cost = st.number_input("ESGDS Annual Cost ($)", value=15000.0, min_value=0.0, step=500.0)
+    esgds_cost = st.number_input(
+        "ESGDS Annual Cost ($)", value=15000.0, min_value=0.0, step=500.0
+    )
 
 # ------------------------------------------------------------
 # --- CALCULATIONS ------------------------------------------
@@ -140,36 +148,28 @@ results = []
 for period, tasks in workstreams.items():
     for task in tasks:
         h = st.session_state.get(f"hours_{task}", 0)
-        # get percentages for the six actors (keys will match actors list)
         w = {actor: st.session_state.get(f"{actor}_{task}", 0) for actor in actors}
 
-        # --- COST calculations ---
-        # GRESB New (monthly cost) -> convert to an hourly proxy by dividing monthly by 160
-        gresb_new_val = (h * w.get("GRESB New", 0) / 100) * (gresb_new_cost / 160)
+        # Costs
+        gresb_n_val = (h * w.get("GRESB N", 0) / 100) * (gresb_new_cost / 160)  # Monthly → hourly
+        gresb_val = 0.0  # GRESB (experienced) → no cost, hours only
 
-        # GRESB Exp -> no direct cost (we will treat this actor as exp staff hours only)
-        gresb_exp_val = 0.0
-
-        # SAS costs (hourly)
         sas_new_val = (h * w.get("SAS New", 0) / 100) * sas_new
         sas_exp_val = (h * w.get("SAS Exp", 0) / 100) * sas_exp
-        sas_consl_val = (h * w.get("SAS Consl", 0) / 100) * sas_consl
-
-        # ESGDS (annual) -> approximate hourly equivalent by annual/2000
+        sas_con_val = (h * w.get("SAS Con", 0) / 100) * sas_con
         esgds_val = (h * w.get("ESGDS", 0) / 100) * (esgds_cost / 2000)
 
-        # Total cost sums only the cost columns (GRESB Exp has 0 cost)
-        total = gresb_new_val + gresb_exp_val + sas_new_val + sas_exp_val + sas_consl_val + esgds_val
+        total = gresb_val + gresb_n_val + sas_new_val + sas_exp_val + sas_con_val + esgds_val
 
         results.append({
             "Period": period,
             "Workstream": task,
             "Hours": h,
-            "GRESB Exp": gresb_exp_val,   # kept as cost=0 here; hours displayed later separately
-            "GRESB New": gresb_new_val,
+            "GRESB": gresb_val,
+            "GRESB N": gresb_n_val,
             "SAS New": sas_new_val,
             "SAS Exp": sas_exp_val,
-            "SAS Consl": sas_consl_val,
+            "SAS Con": sas_con_val,
             "ESGDS": esgds_val,
             "Total": total
         })
@@ -187,8 +187,8 @@ if "saved_scenarios" not in st.session_state:
 
 def capture_current_state():
     snap = {}
-    for k,v in st.session_state.items():
-        if isinstance(v,(int,float,str,bool)):
+    for k, v in st.session_state.items():
+        if isinstance(v, (int, float, str, bool)):
             snap[k] = v
     return snap
 
@@ -196,7 +196,7 @@ with st.expander("💾 Save Scenario"):
     name = st.text_input("Scenario Name")
     if st.button("Save"):
         if not name.strip():
-            st.warning("Enter name")
+            st.warning("Enter a scenario name")
         else:
             payload = {
                 "inputs": capture_current_state(),
@@ -207,27 +207,27 @@ with st.expander("💾 Save Scenario"):
                 }
             }
             st.session_state.saved_scenarios[name] = payload
-            st.success(f"Saved '{name}'")
+            st.success(f"Saved '{name}' successfully!")
 
 # Download all
 if st.session_state.saved_scenarios:
     st.download_button(
         "⬇️ Download All Scenarios",
-        data=json.dumps(st.session_state.saved_scenarios,indent=2),
+        data=json.dumps(st.session_state.saved_scenarios, indent=2),
         file_name="scenarios.json"
     )
 
-# Upload
+# Upload scenarios
 upload = st.file_uploader("📂 Upload Scenarios", type="json")
 if upload:
     try:
         data = json.load(upload)
         st.session_state.saved_scenarios.update(data)
-        st.success("Imported!")
+        st.success("Imported successfully!")
     except:
-        st.error("Bad file")
+        st.error("Invalid file format")
 
-# List + Load/Delete
+# List saved scenarios
 if st.session_state.saved_scenarios:
     st.markdown("### 📁 Saved Scenarios")
     for s, payload in st.session_state.saved_scenarios.items():
@@ -241,7 +241,6 @@ if st.session_state.saved_scenarios:
             if st.button(f"Delete {s}"):
                 del st.session_state.saved_scenarios[s]
                 st.rerun()
-
 # ------------------------------------------------------------
 # --- RESULTS TABLES -----------------------------------------
 # ------------------------------------------------------------

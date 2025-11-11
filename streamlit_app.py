@@ -454,6 +454,5 @@ with colB:
     ]
     total_psc_cost = df[df["Workstream"].isin(psc_tasks)]["Total"].sum()
     st.info(f"💡 **Total PSC Cost:** ${total_psc_cost:,.2f}")
-
 else:
     st.info("No data available yet.")

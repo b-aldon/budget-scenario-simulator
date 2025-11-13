@@ -436,27 +436,27 @@ if not df.empty:
 
     # ---- Stat 1: Most expensive workstream ----
     # ---- Stat 1: Most expensive workstream (excluding ESGDS) ----
-try:
-    # Compute effective total per workstream excluding ESGDS
-    df["Effective_Total"] = (
-        df.get("GRESB", 0) +
-        df.get("GRESB N", 0) +
-        df.get("SAS New", 0) +
-        df.get("SAS Exp", 0) +
-        df.get("SAS Con", 0)
-    )
+    try:
+        # Compute effective total per workstream excluding ESGDS
+        df["Effective_Total"] = (
+            df.get("GRESB", 0) +
+            df.get("GRESB N", 0) +
+            df.get("SAS New", 0) +
+            df.get("SAS Exp", 0) +
+            df.get("SAS Con", 0)
+        )
 
-    max_idx = df["Effective_Total"].idxmax()
-    max_row = df.loc[max_idx]
-    most_expensive_ws = max_row["Workstream"]
-    most_expensive_ws_cost = max_row["Effective_Total"]
+        max_idx = df["Effective_Total"].idxmax()
+        max_row = df.loc[max_idx]
+        most_expensive_ws = max_row["Workstream"]
+        most_expensive_ws_cost = max_row["Effective_Total"]
 
-    st.info(f"💡 **Most Expensive Workstream:** {most_expensive_ws} — ${most_expensive_ws_cost:,.2f}")
+        st.info(f"💡 **Most Expensive Workstream:** {most_expensive_ws} — ${most_expensive_ws_cost:,.2f}")
 
-except Exception:
-    st.info("💡 **Most Expensive Workstream:** N/A")
+    except Exception:
+        st.info("💡 **Most Expensive Workstream:** N/A")
 
-    # ---- Stat 2: Total PSC cost (excluding ESGDS portion) ----
+    # ---- Stat 2: Total PSC cost (excluding ESGDS) ----
     psc_tasks = [
         "5. PSC & Vali admin",
         "6. PSC stock texts updates",
@@ -467,13 +467,16 @@ except Exception:
         "11. PSC Report generation"
     ]
 
-    # Exclude ESGDS contribution for these tasks
-    total_psc_cost = (
-        df[df["Workstream"].isin(psc_tasks)][["GRESB", "GRESB N", "SAS New", "SAS Exp", "SAS Con"]]
-        .sum(axis=1)
-        .sum()
+    # Calculate PSC cost excluding ESGDS
+    df["PSC_Effective_Total"] = (
+        df.get("GRESB", 0) +
+        df.get("GRESB N", 0) +
+        df.get("SAS New", 0) +
+        df.get("SAS Exp", 0) +
+        df.get("SAS Con", 0)
     )
-    st.info(f"💡 **Total PSC Cost (excluding ESGDS):** ${total_psc_cost:,.2f}")
 
-else:
-    st.info("No data available yet.")
+    total_psc_cost = df[df["Workstream"].isin(psc_tasks)]["PSC_Effective_Total"].sum()
+
+    st.info(f"💡 **Total PSC Cost:** ${total_psc_cost:,.2f}")
+

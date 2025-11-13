@@ -435,14 +435,26 @@ if not df.empty:
     st.markdown("---")
 
     # ---- Stat 1: Most expensive workstream ----
-    try:
-        max_idx = df["Total"].idxmax()
-        max_row = df.loc[max_idx]
-        most_expensive_ws = max_row["Workstream"]
-        most_expensive_ws_cost = max_row["Total"]
-        st.info(f"💡 **Most Expensive Workstream:** {most_expensive_ws} — ${most_expensive_ws_cost:,.2f}")
-    except Exception:
-        st.info("💡 **Most Expensive Workstream:** N/A")
+    # ---- Stat 1: Most expensive workstream (excluding ESGDS) ----
+try:
+    # Compute effective total per workstream excluding ESGDS
+    df["Effective_Total"] = (
+        df.get("GRESB", 0) +
+        df.get("GRESB N", 0) +
+        df.get("SAS New", 0) +
+        df.get("SAS Exp", 0) +
+        df.get("SAS Con", 0)
+    )
+
+    max_idx = df["Effective_Total"].idxmax()
+    max_row = df.loc[max_idx]
+    most_expensive_ws = max_row["Workstream"]
+    most_expensive_ws_cost = max_row["Effective_Total"]
+
+    st.info(f"💡 **Most Expensive Workstream:** {most_expensive_ws} — ${most_expensive_ws_cost:,.2f}")
+
+except Exception:
+    st.info("💡 **Most Expensive Workstream:** N/A")
 
     # ---- Stat 2: Total PSC cost (excluding ESGDS portion) ----
     psc_tasks = [

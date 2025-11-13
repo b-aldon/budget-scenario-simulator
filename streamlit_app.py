@@ -465,8 +465,3 @@ if not df.empty:
 
 else:
     st.info("No data available yet.")
-
-    st.info(f"💡 **Total PSC Cost (excluding ESGDS):** ${total_psc_cost:,.2f}")
-
-else:
-    st.info("No data available yet.")

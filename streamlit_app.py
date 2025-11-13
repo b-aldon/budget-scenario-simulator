@@ -361,14 +361,14 @@ st.altair_chart(stack_chart, use_container_width=True)
 # ------------------------------------------------------------
 # --- SUMMARY METRICS ---------------------------------------
 # ------------------------------------------------------------
-st.markdown("### 🧾 Summary")
+
+       st.markdown("### 🧾 Summary")
 
 if not df.empty:
     # --- Basic totals ---
     total_hours = df["Hours"].sum()
 
     # --- Corrected Total Cost Calculation (keeps ESGDS fixed) ---
-    # Sum all dynamic costs but replace ESGDS with the fixed annual cost
     total_cost = (
         df.get("GRESB", 0).sum() +
         df.get("GRESB N", 0).sum() +
@@ -376,8 +376,7 @@ if not df.empty:
         df.get("SAS Exp", 0).sum() +
         df.get("SAS Con", 0).sum()
     )
-    # Add fixed ESGDS cost (input manually in sidebar)
-    total_cost += esgds_cost
+    total_cost += esgds_cost  # add fixed ESGDS cost manually
 
     # --- GRESB Exp total hours (experienced staff hours only) ---
     total_gresb_exp_hours = 0.0
@@ -408,8 +407,6 @@ if not df.empty:
     # LEFT: Hours metrics
     with left_col:
         st.metric("⏱️ Total Hours", f"{total_hours:,.0f}")
-
-        # Use a small HTML block to keep consistent font and alignment
         st.markdown(
             f"""
             <div style="font-size:14px; line-height:1.5;">
@@ -424,7 +421,6 @@ if not df.empty:
     # RIGHT: Cost metrics
     with right_col:
         st.metric("💵 Total Cost", f"${total_cost:,.2f}")
-
         st.markdown(
             f"""
             <div style="font-size:14px; line-height:1.5;">
@@ -449,7 +445,7 @@ if not df.empty:
     except Exception:
         st.info("💡 **Most Expensive Workstream:** N/A")
 
-    # ---- Stat 2: Total PSC cost (sum of the PSC-related workstreams) ----
+    # ---- Stat 2: Total PSC cost (excluding ESGDS portion) ----
     psc_tasks = [
         "5. PSC & Vali admin",
         "6. PSC stock texts updates",
@@ -459,8 +455,14 @@ if not df.empty:
         "10. PSC call",
         "11. PSC Report generation"
     ]
-    total_psc_cost = df[df["Workstream"].isin(psc_tasks)]["Total"].sum()
-    st.info(f"💡 **Total PSC Cost:** ${total_psc_cost:,.2f}")
+
+    # Exclude ESGDS contribution for these tasks
+    total_psc_cost = (
+        df[df["Workstream"].isin(psc_tasks)][["GRESB", "GRESB N", "SAS New", "SAS Exp", "SAS Con"]]
+        .sum(axis=1)
+        .sum()
+    )
+    st.info(f"💡 **Total PSC Cost (excluding ESGDS):** ${total_psc_cost:,.2f}")
 
 else:
     st.info("No data available yet.")

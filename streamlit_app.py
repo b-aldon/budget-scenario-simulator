@@ -361,8 +361,7 @@ st.altair_chart(stack_chart, use_container_width=True)
 # ------------------------------------------------------------
 # --- SUMMARY METRICS ---------------------------------------
 # ------------------------------------------------------------
-
-       st.markdown("### 🧾 Summary")
+st.markdown("### 🧾 Summary")
 
 if not df.empty:
     # --- Basic totals ---
@@ -462,6 +461,11 @@ if not df.empty:
         .sum(axis=1)
         .sum()
     )
+    st.info(f"💡 **Total PSC Cost (excluding ESGDS):** ${total_psc_cost:,.2f}")
+
+else:
+    st.info("No data available yet.")
+
     st.info(f"💡 **Total PSC Cost (excluding ESGDS):** ${total_psc_cost:,.2f}")
 
 else:

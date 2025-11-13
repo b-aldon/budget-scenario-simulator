@@ -376,10 +376,8 @@ total_cost = (
     df.get("SAS Exp", 0).sum() +
     df.get("SAS Con", 0).sum()
 )
-
 # Add fixed ESGDS cost (input manually in sidebar)
 total_cost += esgds_cost
-
     # --- GRESB Exp total hours (experienced staff hours only) ---
     total_gresb_exp_hours = 0.0
     for task in df["Workstream"]:
